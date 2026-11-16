@@ -401,6 +401,7 @@
 			F.last_export = { options, file_name, result };
 			if (typeof callback == 'function') { try { callback(baseName(result.paths[0])); } catch (e) { console.error(e); } }
 			if (in_place) quick(`Saved ${result.paths[0]}`);
+			else if (F.quiet) { F.last_saved = result; BBT.emit('files_saved', result); } // M5 Quick Export batches: own summary
 			else F.showSavedDialog(result);
 			return result;
 		} catch (err) {

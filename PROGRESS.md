@@ -6,7 +6,7 @@
 | 2 | IPA CI workflow | done |
 | 3 | Touch viewport + modifier toolbar | done |
 | 4 | Files app integration | done |
-| 5 | Generic Model workflow (main feature) | pending |
+| 5 | Generic Model workflow (main feature) | done |
 | 6 | UI touch improvements | done |
 | 7 | Apple Pencil | done |
 | 8 | Polish + README | pending |
@@ -70,6 +70,58 @@ Pencil-only, finger paints + 2-finger pinch without paint in finger mode; edit m
 - The double-tap Swift code compiles in CI but is untested on hardware. iOS 17.5+ squeeze (Pencil Pro) is not handled.
 - Pressure modifies size/opacity per dab; `draw_shape_tool`/`gradient_tool`/fill ignore pressure (upstream behaviour).
 - Palm rejection is limited to the 3D viewport and the UV editor; panels elsewhere get normal touch.
+
+### M5 — Generic Model workflow by touch (done)
+
+**Features** (new files `touch/mesh-tools.js`, `touch/generic.js`, `touch/export.js`, `touch/generic.css`; small hooks in
+`touch/gestures.js` (dragHook) and `touch/files.js` (`quiet`); no upstream edits)
+- **Quick start**: "New Generic Model" card at the top of the start screen with preset tiles (Blank, Cube, Sphere, Cylinder,
+  Ico Sphere, **Humanoid** = 6 box meshes in 6 bones with pivots), *Options…* dialog (name, texture/UV size 16–1024, remembered),
+  File › New Generic Model…, ➕ in the floating toolbar. Uses `newProject(Formats.free)` (no upstream project dialog), box UV off,
+  Edit mode, camera framed.
+- **Mesh Tools bar** (bottom of the viewport, Edit mode): big Object/Face/Edge/Vertex toggles, **Orbit ⇄ Box Select** drag toggle,
+  categories Add (block, 13 primitives via one tap/picker, bone wrap, group, locator, to mesh) / Mesh (extrude, inset, subdivide,
+  loop cut, knife, merge, split, join, fill face, flip normals, dissolve, solidify, crease) / Move (tools, **Move by…** numeric dialog,
+  mirror modeling, soft selection, vertex snap, grid, origin→geometry, flip, apply rotation) / UV & Texture (new texture, import,
+  UV editor, project from view, auto UV, maximize, turn, mirror, merge/connect UV, snap, apply texture, seams). Disabled buttons
+  explain what to select. Toggles/tools show state. Collapsible; compact sizes on iPhone. Upstream's amend panel is lifted above it.
+- **Animate bar** (Animate mode): Start, ±1 frame, Play/Pause, End, Animation, Keyframe, prev/next key, Loop, Graph editor, Set End,
+  Onion skin, Export…. Animate tab enlarged.
+- **Subdivide** (new action `bbtouch_subdivide`, also in the Mesh menu): quad→4, tri→4, n-gon→n quads; shared midpoints, UVs
+  interpolated, unselected neighbours with one split edge re-triangulated (mesh stays closed).
+- **Box select by touch drag** through upstream's selection rectangle (`startSelRect`/`moveSelRect`/`stopSelRect`, driven by pointer
+  events); 2 fingers still navigate; sticky Shift/Ctrl extend.
+- **UV editor**: "UV Editor" button reveals the panel (sidebar / mobile sheet). Upstream already supports pinch/pan and 1-finger UV drag
+  — verified by test.
+- **Timeline**: 2-finger pinch zooms the time axis around the fingers, 2-finger drag scrolls; ruler drag scrubs (upstream).
+- **Quick Export** (`File › Quick Export…`, toolbar ⤴, bar Export…): multi-select GLB / glTF / FBX / OBJ / .bbmodel, scale, embed
+  textures, animations, "share afterwards"; remembered in `bbtouch.quick_export`. Runs upstream codecs with the dialog bypassed,
+  writes via M4 (Exports/, sub-folders for multi-file), one summary dialog with Share-all.
+- `docs/GENERIC_MODEL_GUIDE.md`: illustrated user guide incl. Unity/Godot/Unreal/Roblox import, scale and axis notes.
+
+**How to test**
+```
+npm run build:fast
+npm run test:generic                      # 48 checks, iPad 1180x820, CDP touch, mocked Capacitor (installMock from test-files.cjs)
+node scripts/test-generic.cjs --screenshots   # docs/screenshots/m5-*.png
+npm test                                  # all suites (smoke, touch, files, ui, generic)
+```
+Covers: start card visible on top, menu/toolbar entries, options dialog (size remembered), blank project defaults, add cube by bar,
+face mode, tap-select face, sticky Shift multi-select, extrude (+4v/+4f), amend panel above bar, subdivide (closed mesh, 4 selected),
+Move by…, box select by drag (no orbit) and back to orbit, Create Texture (template) applied, UV editor visible, UV pinch zoom,
+UV face drag, bone wrap, Animate tab ≥34 px, add animation, keyframe button, ruler scrub, timeline pinch, start/play/pause, graph editor,
+Quick Export of 4 formats (GLB magic `glTF`, glTF meshes+animations+embedded image, OBJ v/vt/f + mtllib + MTL + PNG, FBX header/
+geometry/AnimationStack), options remembered, Share all, .bbmodel save + reopen (mesh/texture/bone/animation), Humanoid preset.
+CI web job now also runs `scripts/test-generic.cjs`. CI: Build IPA run #6 green (web + generic test, unsigned IPA) —
+https://github.com/LightFreecs/BlockBench-Port/actions/runs/43838151311
+
+**Known issues**
+- No lasso select (upstream has none); box select only.
+- Subdivide is simple midpoint subdivision (no smoothing); neighbours with ≥2 split edges keep T-junctions.
+- The transform gizmo can sit on top of the face you want to tap (same as desktop) — tap off-centre or orbit a bit.
+- FBX export is upstream ASCII; binary FBX ("experimental" upstream) isn't offered in Quick Export.
+- Bar labels are English only.
+- Headless Chromium only; device check needed for the bar's horizontal swipe vs. button taps in WKWebView.
 
 ### M6 — Touch-friendly UI (done)
 

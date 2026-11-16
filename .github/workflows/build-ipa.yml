@@ -36,6 +36,7 @@ jobs:
           npx playwright install --with-deps chromium
       - run: node scripts/smoke-test.cjs --screenshot test-results/ci.png
       - run: node scripts/test-files.cjs --screenshot test-results/files.png
+      - run: node scripts/test-generic.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -101,7 +101,7 @@ function installMock() {
 	window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { Filesystem, Share, App } };
 }
 
-(async () => {
+async function main() {
 	const server = spawn(process.execPath, [path.join(root, 'scripts/serve.mjs'), String(port)], { stdio: 'ignore' });
 	await new Promise(r => setTimeout(r, 500));
 	const browser = await chromium.launch();
@@ -417,4 +417,7 @@ function installMock() {
 	const nFail = results.filter(r => !r.ok).length;
 	console.log(`\n${results.length - nFail}/${results.length} checks passed`);
 	process.exit(failed || nFail ? 1 : 0);
-})();
+}
+// M5: scripts/test-generic.cjs reuses the mock.
+if (require.main === module) main();
+module.exports = { installMock };
