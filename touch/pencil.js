@@ -491,12 +491,14 @@
 	}
 
 	// Apple Pencil double tap (native UIPencilInteraction → bridge.triggerWindowJSEvent)
-	P.onDoubleTap = function (preferred) {
+	P.onDoubleTap = function (preferred, kind) {
 		P.stats.double_taps++;
 		let action = S.double_tap;
 		if (action === 'off') return;
-		if (action === 'system') {
-			action = { switchEraser: 'eraser', switchPrevious: 'previous', showColorPalette: 'color', ignore: 'off' }[preferred] || 'eraser';
+		// Pencil Pro squeeze (M8) always follows its own system preference; palettes → colour popover
+		if (action === 'system' || kind === 'squeeze') {
+			action = { switchEraser: 'eraser', switchPrevious: 'previous', showColorPalette: 'color', showInkAttributes: 'color', showContextualPalette: 'color', ignore: 'off' }[preferred]
+				|| (kind === 'squeeze' ? 'color' : 'eraser');
 			if (action === 'off') return;
 		}
 		if (!isPaintTool() && !(window.Modes && Modes.paint)) return;
@@ -508,7 +510,7 @@
 		let d = e && e.detail;
 		if (!d) { try { d = JSON.parse(e.data || '{}'); } catch (err) { d = {}; } }
 		if (!d.action && e.action) d = e;
-		P.onDoubleTap(d && d.action);
+		P.onDoubleTap(d && d.action, d && d.kind);
 	});
 
 	// --- floating brush bar ------------------------------------------------------------------

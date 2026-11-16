@@ -345,6 +345,11 @@ function check(name, ok, info) {
 		await P(() => { const e = new Event('bbtouchPencilTap'); e.action = 'switchEraser'; window.dispatchEvent(e); });
 		const t2 = await P(() => Toolbox.selected.id);
 		check('Pencil double-tap toggles eraser ↔ brush', t1 === 'eraser' && t2 === 'brush_tool', { t1, t2 });
+		// Pencil Pro squeeze (iOS 17.5+): system "contextual palette" → colour popover
+		await P(() => { const e = new Event('bbtouchPencilTap'); e.action = 'showContextualPalette'; e.kind = 'squeeze'; window.dispatchEvent(e); });
+		await sleep(100);
+		check('Pencil Pro squeeze (contextual palette) opens the colour popover', await P(() => !!document.getElementById('bbt_color_pop')));
+		await P(() => BBTouch.pencil.closePopovers());
 
 		// 11. 2D UV / texture editor
 		const uv = await P(() => { const vp = UVEditor.vue.$refs.viewport, f = document.getElementById('uv_frame'); const r = f.getBoundingClientRect(), rv = vp.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, vx: rv.left, vy: rv.top, vw: rv.width, vh: rv.height }; });

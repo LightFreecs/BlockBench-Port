@@ -97,4 +97,22 @@ class BBBridgeViewController: CAPBridgeViewController, UIPencilInteractionDelega
     func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
         sendPencilTap()
     }
+
+    // M8: Apple Pencil Pro squeeze (iOS 17.5+) → same JS event with kind "squeeze" and the
+    // user's system squeeze preference (palettes map to the colour popover in touch/pencil.js).
+    @available(iOS 17.5, *)
+    func pencilInteraction(_ interaction: UIPencilInteraction, didReceiveSqueeze squeeze: UIPencilInteraction.Squeeze) {
+        guard squeeze.phase == .ended else { return }
+        let action: String
+        switch UIPencilInteraction.preferredSqueezeAction {
+        case .switchEraser: action = "switchEraser"
+        case .switchPrevious: action = "switchPrevious"
+        case .showColorPalette: action = "showColorPalette"
+        case .showInkAttributes: action = "showInkAttributes"
+        case .showContextualPalette: action = "showContextualPalette"
+        case .ignore, .runSystemShortcut: action = "ignore"
+        default: action = "other"
+        }
+        bridge?.triggerWindowJSEvent(eventName: "bbtouchPencilTap", data: "{\"action\":\"\(action)\",\"kind\":\"squeeze\"}")
+    }
 }
