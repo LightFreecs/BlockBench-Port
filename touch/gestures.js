@@ -417,14 +417,69 @@
 	}, { capture: true, passive: false });
 
 	// --- bigger gizmo + more tolerant picking ----------------------------------------
+	// The gizmo keeps a constant on-screen size upstream (×1.5 here for fingers). Zoomed out, that
+	// leaves its arrows far away from a tiny object. Fit it to the selection instead: arm length ≈
+	// selection radius × gizmo_fit, never shorter than gizmo_min_px on screen, never bigger than before.
+	let _corner = null;
+	function selectionRadius(center) {
+		if (!_corner) _corner = new THREE.Vector3();
+		let r = 0, n = 0;
+		const els = (window.Outliner && Outliner.selected) || [];
+		for (const el of els) {
+			const mesh = el && el.mesh;
+			if (!mesh || !mesh.geometry) continue;
+			mesh.updateMatrixWorld();
+			const sub = window.Mesh && el instanceof Mesh && window.Modes && Modes.edit && BarItems.selection_mode &&
+				BarItems.selection_mode.value !== 'object' && el.getSelectedVertices ? el.getSelectedVertices() : [];
+			if (sub.length) {
+				for (const k of sub) { _corner.fromArray(el.vertices[k]); mesh.localToWorld(_corner); r = Math.max(r, _corner.distanceTo(center)); }
+				n++;
+				continue;
+			}
+			const g = mesh.geometry;
+			if (!g.boundingBox) g.computeBoundingBox();
+			const b = g.boundingBox;
+			if (!b || b.isEmpty()) continue;
+			for (let i = 0; i < 8; i++) {
+				_corner.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(mesh.matrixWorld);
+				r = Math.max(r, _corner.distanceTo(center));
+			}
+			n++;
+		}
+		return n ? r : null;
+	}
+	function fitGizmoScale(big) {
+		try {
+			const T = window.Transformer, cam = T && T.camera, P = cam && cam.preview;
+			if (!P || !P.width || !P.height) return big;
+			const center = T.getWorldPosition(new THREE.Vector3());
+			const r = selectionRadius(center);
+			if (r === null) return big;
+			const a = center.clone().project(cam);
+			const b = center.clone().add(new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion)).project(cam);
+			const px_per_unit = Math.hypot((b.x - a.x) / 2 * P.width, (b.y - a.y) / 2 * P.height);
+			if (!(px_per_unit > 0) || !isFinite(px_per_unit)) return big;
+			const floor = cfg.gizmo_min_px / px_per_unit;
+			return Math.min(big, Math.max(floor, r * cfg.gizmo_fit));
+		} catch (e) {
+			return big;
+		}
+	}
+	G.fitGizmoScale = fitGizmoScale;
+
 	BBTouch.onReady(() => {
 		Preview.all.forEach(patchControls);
 		const T = window.Transformer;
 		if (T && T.getScale && !T.getScale.__bbtouch) {
 			const orig = T.getScale;
+			let last = null;
 			T.getScale = function () {
 				const s = orig.apply(this, arguments);
-				return active() ? s * cfg.gizmo_scale : s;
+				if (!active()) return s;
+				const big = s * cfg.gizmo_scale;
+				// keep the size steady while a handle is being dragged
+				if (T.dragging && last) return last;
+				return (last = fitGizmoScale(big));
 			};
 			T.getScale.__bbtouch = true;
 		}

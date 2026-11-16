@@ -159,3 +159,9 @@ body.is_mobile #bbt_meshbar .bbt_mb_cat { height: 38px; }
 /* Reference images (touch/reference.js): while editing, upstream's per-image toolbar can sit under
    the Mesh Tools bar and steal its taps (Done / Opacity / Delete). Keep the bar on top. */
 .reference_image_mode #bbt_meshbar { z-index: 13; }
+
+/* iPhone / narrow layout: upstream's vertical tool column sits at the bottom right of the viewport,
+   exactly where the Mesh Tools bar is. Keep it above the bar and let it scroll if space runs out. */
+#preview > .toolbar_wrapper.tools.narrow { bottom: var(--bbt-meshbar-h, 0px); }
+#preview > .toolbar_wrapper.tools.narrow > .toolbar.vertical { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+#preview > .toolbar_wrapper.tools.narrow > .toolbar.vertical > .content { overflow: visible; }

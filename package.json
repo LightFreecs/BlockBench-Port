@@ -17,7 +17,8 @@
 		"test:generic": "node scripts/test-generic.cjs",
 		"test:pencil": "node scripts/test-pencil.cjs",
 		"test:reference": "node scripts/test-reference.cjs",
-		"test": "node scripts/smoke-test.cjs && node scripts/test-touch.cjs && node scripts/test-files.cjs && node scripts/test-ui.cjs && node scripts/test-generic.cjs && node scripts/test-pencil.cjs && node scripts/test-offline.cjs && node scripts/test-reference.cjs",
+		"test:gizmo": "node scripts/test-gizmo-layout.cjs",
+		"test": "node scripts/smoke-test.cjs && node scripts/test-touch.cjs && node scripts/test-files.cjs && node scripts/test-ui.cjs && node scripts/test-generic.cjs && node scripts/test-pencil.cjs && node scripts/test-offline.cjs && node scripts/test-reference.cjs && node scripts/test-gizmo-layout.cjs",
 		"test:offline": "node scripts/test-offline.cjs"
 	},
 	"dependencies": {

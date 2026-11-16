@@ -260,7 +260,7 @@ function check(name, ok, info) {
 			const r = p.canvas.getBoundingClientRect();
 			return { big, small, pt: [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height], from: Cube.all.find(c => c.name === 'cube_a').from.slice() };
 		});
-		check('gizmo is scaled up in touch mode', giz.big > giz.small * 1.4, { big: giz.big.toFixed(3), small: giz.small.toFixed(3) });
+		check('touch gizmo: bigger than desktop, fitted to the object (≤ 1.5×)', giz.big > giz.small && giz.big <= giz.small * 1.51, { big: giz.big.toFixed(3), small: giz.small.toFixed(3) });
 		c0 = await cam();
 		await drag([giz.pt], [[giz.pt[0] + 120, giz.pt[1] + 10]], 15);
 		c1 = await cam();

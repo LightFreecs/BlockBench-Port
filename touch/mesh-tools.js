@@ -461,6 +461,7 @@
 		bar.innerHTML = '<div class="bbt_mb_row bbt_mb_row1"></div><div class="bbt_mb_row bbt_mb_row2"></div>';
 		row1 = bar.querySelector('.bbt_mb_row1');
 		row2 = bar.querySelector('.bbt_mb_row2');
+		if (window.ResizeObserver) new ResizeObserver(() => updateInset()).observe(bar);
 		bar.addEventListener('pointerdown', e => { e.stopPropagation(); if (e.pointerType !== 'mouse') e.preventDefault(); });
 		bar.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
 		bar.addEventListener('click', e => {
@@ -477,7 +478,7 @@
 			} else if (btn.dataset.ctl === 'collapse') {
 				MT.collapsed = !MT.collapsed;
 				BBT.store.set('meshbar_collapsed', MT.collapsed);
-				MT.refresh();
+				render(); // rebuild: the collapsed class + chevron are set in build()
 			} else if (btn._bbt_item) {
 				runItem(btn._bbt_item, btn);
 			}
@@ -508,6 +509,22 @@
 		if (MT.collapsed) { MT.collapsed = false; BBT.store.set('meshbar_collapsed', false); }
 		render();
 	};
+
+	/** --bbt-meshbar-h = space the bar takes at the bottom of the viewport (0 when hidden), so other
+	 *  viewport overlays (upstream's vertical tool column on iPhone) can stay above it. */
+	let last_inset = -1;
+	function updateInset() {
+		let h = 0;
+		if (bar && bar.classList.contains('visible')) {
+			const host = bar.offsetParent || bar.parentElement;
+			const hr = host && host.getBoundingClientRect(), br = bar.getBoundingClientRect();
+			if (hr && br.height) h = Math.max(0, Math.round(hr.bottom - br.top + 6));
+		}
+		if (h === last_inset) return;
+		last_inset = h;
+		document.documentElement.style.setProperty('--bbt-meshbar-h', h + 'px');
+	}
+	MT.updateInset = updateInset;
 
 	function render() {
 		if (!bar) return;
@@ -578,6 +595,7 @@
 		bar.classList.toggle('visible', show);
 		document.documentElement.classList.toggle('bbt-meshbar-visible', show && !MT.collapsed);
 		MT.visible = show;
+		updateInset();
 		if (!show) return;
 		const s = BarItems.selection_mode;
 		const sel_enabled = !!(s && Condition(s.condition));

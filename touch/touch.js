@@ -58,6 +58,8 @@
 		long_press_ms: 420,      // matches upstream's rclick_cooldown
 		orbit_speed: 1.0,
 		gizmo_scale: 1.5,        // multiplier on top of settings.control_size
+		gizmo_min_px: 80,        // gizmo arm never shorter than this on screen (finger-sized handles)
+		gizmo_fit: 1.3,          // otherwise arm ≈ selection radius × this (arrows just outside the object)
 		pick_tolerance: 1.5,     // extra multiplier on raycaster point/line thresholds
 	}, BBTouch.config || {});
 

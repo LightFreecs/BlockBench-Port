@@ -45,6 +45,20 @@ app icon / launch screen assets.
 
 ## Log
 
+### Post-M8 — Gizmo fit, iPhone tool column, Mesh Tools collapse (done)
+
+Reported from the device (iPhone portrait): when zoomed out, the move gizmo stays huge while the cube shrinks, so the
+handles are far from the object; the tool column on the right is partly covered.
+- `touch/gestures.js`: touch gizmo size is fitted to the selection (arm ≈ 1.3 × selection radius, selected vertices in
+  face/edge/vertex mode), never shorter than 80 px on screen, never bigger than the previous ×1.5. On a 390 px phone:
+  151 px → 98 px → 80 px as you zoom out (was 151 px always). Config: `BBTouch.config.gizmo_fit`, `gizmo_min_px`.
+- `touch/mesh-tools.js` publishes `--bbt-meshbar-h`; upstream's vertical tool column (narrow layout) now ends above the
+  Mesh Tools bar and scrolls if it runs out of room.
+- Fixed: the Mesh Tools ⌄ collapse button changed state but didn't redraw the bar until something else re-rendered it.
+- Test: `scripts/test-gizmo-layout.cjs` (`npm run test:gizmo`, 8 checks, iPhone viewport), in `npm test`;
+  `test-touch.cjs` gizmo check updated (bigger than desktop, ≤ 1.5×).
+
+
 ### Post-M8 — Reference images (blueprints) + duplicate Generic Model entry removed (done)
 
 **Asked for:** Blender-style background images to trace a character sheet at the start of modeling; and remove our own
