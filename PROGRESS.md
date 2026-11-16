@@ -5,13 +5,152 @@
 | 1 | Scaffold | done |
 | 2 | IPA CI workflow | done |
 | 3 | Touch viewport + modifier toolbar | done |
-| 4 | Files app integration | pending |
+| 4 | Files app integration | done |
 | 5 | Generic Model workflow (main feature) | pending |
-| 6 | UI touch improvements | pending |
+| 6 | UI touch improvements | done |
 | 7 | Apple Pencil | pending |
 | 8 | Polish + README | pending |
 
 ## Log
+
+### M6 — Touch-friendly UI (done)
+
+**Features** (all in `touch/`, no upstream edits; active when touch mode is on, `html.bb-touch-mode`)
+- `touch/longpress.js` — **long press (450 ms, 10 px slop) = right click everywhere** outside the 3D viewport: dispatches a
+  synthetic `contextmenu` at the element under the finger, so every upstream context menu works (outliner, textures, UV
+  editor, timeline/keyframes, animations, tabs, panels, sliders…). Growing accent ring under the finger + haptic
+  (Capacitor Haptics if ever installed, `navigator.vibrate` otherwise). After it fires the rest of the touch is swallowed
+  (no scroll, no outliner drag, no click on the menu that opened under the finger). Chromium's own touch `contextmenu`
+  is suppressed (no double menus). On toolbar buttons the long press first shows the **tooltip**; keep holding ~0.65 s
+  more for the context menu. Excludes editable inputs, resizers, our own UI.
+- `touch/gestures.js` (M3) — the viewport long press now opens the element/canvas menu **while holding** (iOS style).
+- `touch/inputs.js` — **NumSliders** (`.nslide`): horizontal drag = scrub (12 px/step, upstream interval incl. sticky
+  Shift/Ctrl), value bubble above the finger, one undo step; vertical drag = native panel scroll (never scrubs);
+  **precision**: hold ~400 ms then drag, or move the finger >70 px above/below the slider → 0.1× steps ("fine" badge);
+  hold + lift = upstream slider menu (copy/paste/round/reset); **tap = keypad popover** (digits, `.`, `±`, `⌫`, `C`,
+  `+ − × ÷ ( )`, nudge −/+ step (applied live), ⌨ = fall back to the iOS keyboard, ✓). Values go through upstream's
+  own input path (`stopInput`: MolangParser, `+5`/`*2` relative, `val`, `%`). No contenteditable → no keyboard popping up.
+  Dialog/form number fields (`.numeric_input input`, `input[type=number]`) also get the keypad on tap. Short screens
+  (height < 520) use a side-by-side keypad layout so it fits on iPhone landscape.
+- `touch/ui.js` — **sidebar edge buttons** (wide layouts): tabs on the left/right edge of the viewport hide/show the
+  sidebars (persisted in `bbtouch.sidebars`). **Quick Actions**: "⚡ Actions" in the menu bar + ⚡ button in the floating
+  toolbar open upstream's action search (command palette) *without* popping the keyboard (tap the field to type).
+  **Menus**: compat `mouseenter/mouseover` after a touch are blocked for menu-bar items and menu entries, so a tap on
+  another menu switches instead of open→close flicker; submenus open on tap. **Keyboard**: document scroll is locked
+  when the iOS keyboard opens; a focused field inside a dialog that would be covered lifts the dialog (visualViewport).
+- `touch/ui.css` — bigger targets in touch mode: menu entries ≥44 px, toolbar tools 36–40 px, outliner rows 36 px +
+  bigger toggles, panel headers/menu buttons 34–36 px, tabs, sliders, numeric inputs, checkboxes 22 px, dialog buttons
+  ≥42 px, color pickers, range thumbs, wider scrollbars, 14 px resize lines (`touch-action: none`, so the sidebar
+  resize drag works by touch), `overscroll-behavior: contain` + momentum on panel scroll areas; hover tooltips and
+  hover-only slider arrows disabled. All colours from upstream theme variables (checked in dark and light themes).
+- `touch/toolbar.js` (M3) — ⚡ Quick Actions button; default position is re-applied after the layout settles (it used to
+  land over the left sidebar) and clears the edge toggle; **compact layouts** (upstream mobile layout, i.e. iPhone /
+  height ≤ 500): horizontal, collapsed by default, bottom-left of the viewport.
+- Compact layout (iPhone): upstream's own mobile layout already presents panels as slide-over sheets from the panel
+  selector bar; we enlarge its targets and keep our toolbar out of the way rather than inventing a second drawer system.
+
+**How to test**
+```
+npm run build:fast
+npm run test:ui                       # 49 checks, iPad 1180x820 + iPhone 844x390 (CDP Input.dispatchTouchEvent)
+node scripts/test-ui.cjs --screenshots            # docs/screenshots/m6-ipad.png, m6-ipad-menu.png, m6-ipad-actions.png,
+                                                  # m6-iphone.png, m6-iphone-menu.png, m6-iphone-keypad.png
+node scripts/test-ui.cjs --only ipad --light --screenshots   # m6-ipad-light.png (+ menu, then rename) in the light theme
+npm test                              # smoke + touch (M3) + files (M4) + ui (M6)
+```
+Covers: long-press outliner → menu while holding, stays open, selects, no drag helper, ≥44 px rows, tap entry runs it;
+short tap selects; long press textures panel / project tab; slider scrub, one undo step, precision scrub, vertical drag
+doesn't scrub, tap → keypad (no editing/keyboard), keypad entry, expression, nudge, slider hold menu; edge buttons
+hide/show sidebars; sidebar resize by touch; menu bar open/switch/close, submenu on tap; tool tap without sticky tooltip,
+long-press tooltip; Quick Actions (menu bar + toolbar) without keyboard; dialog number input via keypad; viewport hold
+menu; iPhone: compact layout, panel selector ≥44 px, outliner sheet long press, slider scrub, keypad fits on screen.
+`scripts/test-touch.cjs` now pins the floating toolbar to the far left (it is now really placed inside the viewport and
+would sit under the pinch fingers).
+
+**Known issues / not verified**
+- Headless Chromium only. iOS WKWebView compat-mouse/click behaviour after `preventDefault` on `touchend` should match,
+  but a device check is needed (esp. the iOS "hover content change swallows the click" heuristic on menus — mitigated by
+  blocking compat mouseover).
+- No real haptics: `@capacitor/haptics` isn't installed (`navigator.vibrate` doesn't exist on iOS). Add the plugin later
+  and longpress.js uses it automatically.
+- The outliner still starts its upstream drag at 320 ms; if you move between 320 and 450 ms it's a re-order drag
+  (intended), holding still gives the menu.
+- Keyboard lifting only handles inputs inside dialogs / action search; inputs in panels rely on WKWebView's own scrolling
+  (document scroll is locked to 0 so the layout doesn't jump).
+- Wider `::-webkit-scrollbar` has no effect where iOS uses overlay scrollbars.
+- Long-press tooltips only for `.tool` elements with an upstream `.tooltip` child (toolbars); other elements use `title`.
+
+### M4 — iOS Files app integration (done)
+
+**Features** (`touch/files.js` + `touch/files.css`; active only when `Capacitor.isNativePlatform()`, upstream web behaviour otherwise)
+- **Export / save** (`Blockbench.export` = `Filesystem.exportFile` wrapped) → app Documents dir (Files › On My iPad/iPhone › Blockbench Touch):
+  `.bbmodel` → `Projects/`, images → `Textures/` (screenshots → `Screenshots/`), everything else → `Exports/` (overwrites same name).
+  Text is written as utf8, binary (GLB, PNG, ArrayBuffer/Blob/data URL) as base64.
+  Multi-file outputs go into a sub-folder: upstream's web `assets.zip` bundles (OBJ+MTL+PNG, FBX+PNG, DAE+PNG) are unpacked to
+  `Exports/<name>_<ext>/`; glTF/GLB with *embed textures* off → `Exports/<name>_gltf|glb/` + the referenced PNGs.
+  Afterwards a "Saved to Blockbench Touch/…" dialog with **Share** (share sheet: Save to Files / AirDrop, all files of a folder) /
+  **Share .zip** (multi-file) / **OK**. Calls with a `custom_writer` (desktop-only paths, form "save" fields) fall through to upstream.
+- **Save in place**: the Documents path is remembered per project (`Project.bbtouch_doc_path`, also set when opening from Documents).
+  Ctrl+S / Save / Smart Save overwrite silently (quick message); first save picks a unique name from the project name;
+  **Save As** asks for a new name. Project saves on iOS don't also "download" each unsaved texture (they're embedded in the .bbmodel).
+- **Import** (`Blockbench.import` = `Filesystem.importFile` wrapped): `<input type=file>` attached to the DOM, *no* `accept` filter
+  (iOS greys out .bbmodel/.obj/.gltf/.glb/.fbx when it can't map them to UTIs) except `image/*` for image-only imports (gives the
+  photo library), real `multiple` (upstream sets `multiple="false"`, which HTML treats as true), no upstream "File Type" pre-dialog;
+  picked files are filtered by extension afterwards (quick message for skipped ones), then read by upstream `Filesystem.readFile`
+  (text/ArrayBuffer/data URL as requested).
+- **Browse Documents** dialog (File menu after *Open Model*, and a "Your files" section on the start screen): Files/Recent tabs,
+  breadcrumbs, 52 px rows, tap = open; `⋯` = Open / Share / Rename / Delete (folders: Share all files / Rename / Delete); new folder,
+  refresh, "Import from Files…" (= Open Model picker). Opening: `.bbmodel` → new tab (or selects the tab already holding that path),
+  images → `loadImages`, other model formats → `loadModelFile`, `.obj`/`.mtl` → upstream *Import OBJ* dialog pre-filled with the obj
+  + sibling mtl (needs a mesh-capable project, e.g. Generic Model), anything else → offer Share.
+- **Backups**: every 3 min (if unsaved changes), when the app is hidden/paused (`visibilitychange`, App `pause`) and via
+  *File › Back Up Project to Documents*: `Backups/<name>_<uuid8>_<yyyymmdd-hhmmss>.bbmodel`, skipped if unchanged, keeps the newest 5
+  per project / 40 total. Upstream IndexedDB autosave keeps working in WKWebView (unchanged).
+- **Open in Blockbench Touch**: `Info.plist` gets `CFBundleDocumentTypes` (bbmodel = Owner; glTF/GLB/OBJ/FBX/3D content, PNG/JPEG/images,
+  JSON = Alternate), `UTExportedTypeDeclarations` (`com.lightfreecs.blockbenchtouch.bbmodel`, conforms to public.json) and
+  `UTImportedTypeDeclarations` (gltf, glb, obj, fbx). `SceneDelegate.swift` copies opened file URLs that are outside our Documents
+  folder (security-scoped, `NSFileCoordinator`) to `Documents/Imported/<name>` *before* forwarding to Capacitor; JS (`@capacitor/app`
+  `appUrlOpen` + `getLaunchUrl`) maps the URL to `Imported/<name>` or, for files already in Documents, opens them in place.
+- `@capacitor/app` added (Package.swift regenerated by `cap sync`). `scripts/build-web.mjs` now ships
+  `node_modules/@capacitor/core/dist/capacitor.js` as `www/touch/vendor/capacitor.js` (loaded first): the iOS bridge only injects the
+  low-level bridge, `Capacitor.registerPlugin()` comes from core. In a browser it just reports platform `web`.
+
+**API** (`BBTouch.files`): `cap` (adapter: `isNative()`, `plugin(name)` — the only place touching `window.Capacitor`), `docs`
+(`write/readText/readBase64/readBuffer/list/stat/exists/mkdir/remove/rename/uri/uniquePath`, Documents-relative), `share(paths)`,
+`showSavedDialog`, `openBrowser(path)`, `openDocument(path)`, `backupNow()`, `handleOpenUrl(url)`, `recent`, `config`, `last_export`.
+
+**How to test**
+```
+npm run build:fast
+npm run test:files     # 45 checks, mocked window.Capacitor (in-memory Filesystem, Share, App)
+npm test               # smoke + touch + files
+```
+`scripts/test-files.cjs` blocks `touch/vendor/capacitor.js` (it would replace the mock's `isNativePlatform`) and injects the mock with
+`addInitScript`. Covers: folders, menu/start screen entries, first save/dialog/Share, in-place Ctrl+S, Save As, glTF (embedded),
+glTF (external textures → folder), GLB (binary magic, base64), OBJ → folder + Share all, FBX → folder, texture save → Textures/,
+browser listing / open .bbmodel / save in place / rename / delete / Recent, file picker (no accept, multiple, binary multi-read,
+extension filter, image/* for images), OBJ open → pre-filled import dialog → mesh, backups + pruning, appUrlOpen (foreign URL →
+Imported/, Documents URL → in place), no console errors, and that a plain browser still downloads via upstream.
+Also run in CI (web job, screenshot artifact `test-results/files.png`). Screenshot: `docs/screenshots/m4.png`.
+
+**Known issues / not verified on device**
+- Native code paths (Swift copy, real Filesystem/Share/App plugins, iOS document picker, share sheet) are only compile-checked in CI;
+  the JS is tested against a mock with the plugin semantics (base64 vs utf8, `recursive`, `readdir` shape). Check on device:
+  "Open in" from Files/Mail, Share › Save to Files, picker with .bbmodel/.glb, large exports (base64 over the bridge ~1.33× size).
+- Files opened from another location are copied into `Imported/`, so Save writes the copy, not the original (no in-place editing of
+  iCloud/other-provider files). `Imported/` files with the same name are overwritten by the next import.
+- Exports overwrite an existing file of the same name in `Exports/` (like re-exporting on desktop); only project saves uniquify.
+- Backups cover the *current* project only (other open tabs are backed up when they become current and change).
+- The share sheet needs a source rect on iPad; the Share plugin anchors it itself — verify it doesn't appear off-screen.
+- `Documents/.share/` (hidden) keeps the last shared .zip; harmless.
+- Upstream still shows its own "Saved as …" quick message after exports in addition to our dialog.
+
+**Notes for M5 (Generic Model export flow)**
+- Generic Model exports already land in `Exports/`: `Codecs.gltf.export()` (asks encoding/embed/scale/animations), `Codecs.obj.export()`,
+  `Codecs.fbx.export()`; each shows the Saved dialog with Share. A quick-export button can call these directly; `BBTouch.files.last_export`
+  holds `{file_name, result:{paths, folder}}` and `BBTouch.on('files_saved', r => …)` fires after every write.
+- To share right after exporting without the dialog: `BBTouch.files.share(BBTouch.files.last_export.result.paths)`.
+- E2E tests for M5 can reuse the mock from `scripts/test-files.cjs` (`installMock`).
 
 ### M2 — IPA CI workflow (done)
 

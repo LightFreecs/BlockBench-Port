@@ -12,10 +12,12 @@
 		"serve": "node scripts/serve.mjs",
 		"test:web": "node scripts/smoke-test.cjs",
 		"test:touch": "node scripts/test-touch.cjs",
+		"test:files": "node scripts/test-files.cjs",
 		"test:ui": "node scripts/test-ui.cjs",
-		"test": "node scripts/smoke-test.cjs && node scripts/test-touch.cjs && node scripts/test-ui.cjs"
+		"test": "node scripts/smoke-test.cjs && node scripts/test-touch.cjs && node scripts/test-files.cjs && node scripts/test-ui.cjs"
 	},
 	"dependencies": {
+		"@capacitor/app": "^8.1.2",
 		"@capacitor/core": "^8.6.2",
 		"@capacitor/filesystem": "^8.1.5",
 		"@capacitor/preferences": "^8.0.1",
