@@ -8,7 +8,7 @@
  *  1 finger drag (not on gizmo)  → orbit
  *  1 finger drag on gizmo        → upstream transform (untouched)
  *  1 finger tap                  → upstream click/select (replayed on lift, so a drag never selects)
- *  1 finger long press           → upstream context menu (on lift, like upstream)
+ *  1 finger long press           → upstream context menu, opened while still holding (M6)
  *  double tap on element         → focus camera on selection (with zoom)
  *  double tap on empty space     → frame all elements
  *  2 finger drag + pinch         → pan + zoom simultaneously (zoom towards fingers)
@@ -43,6 +43,7 @@
 	let moved = false;
 	let nav_prev = null;       // {cx, cy, dist}
 	let last_tap = null;       // {time, x, y, hit}
+	let hold_timer = 0;        // long-press → context menu while holding
 
 	function isTouchLike(e) { return e.pointerType === 'touch' || e.pointerType === 'pen'; }
 	function findPreview(target) {
@@ -222,8 +223,37 @@
 		}
 	}
 
+	// Long press: select (like a tap) and open upstream's context menu while the
+	// finger is still down (iOS style). The lift is then ignored.
+	function holdMenu() {
+		hold_timer = 0;
+		const p = preview, e = down_event;
+		if (G.mode !== 'pending' || moved || !p || !e || G.pointers.size !== 1) return;
+		G.mode = 'held';
+		down_event = null;
+		last_tap = null;
+		G.stats.taps++;
+		G.stats.hold_menus = (G.stats.hold_menus || 0) + 1;
+		p.controls.hasMoved = false;
+		p.click(e);
+		clearTimeout(p.rclick_cooldown);
+		p.rclick_cooldown = true;
+		p.static_rclick = true;
+		const fake = {
+			type: 'touchend', which: 1, button: 0, pointerType: 'touch', target: p.canvas, currentTarget: p.canvas,
+			clientX: e.clientX, clientY: e.clientY, pageX: e.pageX, pageY: e.pageY, offsetX: e.offsetX, offsetY: e.offsetY,
+			shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey, ctrlOrCmd: e.ctrlKey || e.metaKey,
+			preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {},
+		};
+		try { p.showContextMenu(fake); } catch (err) { console.error('[BBTouch] hold menu', err); }
+		p.controls.hasMoved = true; // the upstream touchend must not "unselect all"
+		if (BBTouch.longpress && BBTouch.longpress.haptic) BBTouch.longpress.haptic();
+	}
+
 	// --- pointer listeners (capture phase, before upstream) -----------------------
 	function reset() {
+		clearTimeout(hold_timer);
+		hold_timer = 0;
 		G.mode = 'idle';
 		preview = null;
 		down_event = null;
@@ -264,6 +294,8 @@
 			// Hold the event back: it is replayed as a click if this turns out to be a tap.
 			G.mode = 'pending';
 			down_event = e;
+			clearTimeout(hold_timer);
+			hold_timer = setTimeout(holdMenu, cfg.long_press_ms);
 			if (window.Menu && Menu.open) Menu.open.hide();
 			if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) {
 				document.activeElement.blur();

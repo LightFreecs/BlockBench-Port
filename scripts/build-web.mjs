@@ -59,11 +59,13 @@ fs.cpSync(path.join(root, 'touch'), path.join(www, 'touch'), { recursive: true }
 
 const indexPath = path.join(www, 'index.html');
 let html = fs.readFileSync(indexPath, 'utf8');
-const head = '\t<link rel="stylesheet" href="touch/touch.css" id="bb_touch_stylesheet">\n';
+const head = '\t<link rel="stylesheet" href="touch/touch.css" id="bb_touch_stylesheet">\n' +
+	'\t<link rel="stylesheet" href="touch/ui.css" id="bb_touch_ui_stylesheet">\n';
 // Classic (non-module) script runs before the deferred module bundle, so the
 // touch layer can set up globals/hooks before Blockbench boots.
 // touch.js (core) must come first; the others register on window.BBTouch.
-const touchScripts = ['touch.js', 'modifiers.js', 'gestures.js', 'toolbar.js'];
+// M6 (UI): longpress.js must come before inputs.js (shared touch listeners order).
+const touchScripts = ['touch.js', 'modifiers.js', 'gestures.js', 'toolbar.js', 'longpress.js', 'inputs.js', 'ui.js'];
 for (const f of touchScripts) {
 	if (!fs.existsSync(path.join(root, 'touch', f))) throw new Error(`touch/${f} missing`);
 }

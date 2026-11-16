@@ -2,7 +2,8 @@
  *
  * Draggable (grip), collapsible, position + collapsed state stored in localStorage.
  * Buttons: Shift, Ctrl(⌘), Alt (sticky: tap = next action, double-tap = lock),
- * Undo, Redo, Focus, Delete, Duplicate, Touch-mode toggle.
+ * Undo, Redo, Focus, Delete, Duplicate, Quick Actions, Touch-mode toggle.
+ * Compact layouts (iPhone, html.bbt_compact): horizontal, collapsed by default, bottom-left.
  */
 (function () {
 	'use strict';
@@ -19,6 +20,7 @@
 		{ id: 'focus', icon: 'center_focus_weak', title: 'Focus on selection (none selected: frame all)', run: focus },
 		{ id: 'duplicate', icon: 'content_copy', title: 'Duplicate', action: 'duplicate' },
 		{ id: 'delete', icon: 'delete', title: 'Delete', action: 'delete' },
+		{ id: 'quick_actions', icon: 'bolt', title: 'Quick Actions (search every action)', run: () => BBTouch.ui && BBTouch.ui.quickActions() },
 		{ sep: true },
 		{ id: 'touch_mode', icon: 'touch_app', title: 'Touch mode (gestures, big gizmo)', run: () => BBTouch.setEnabled(!BBTouch.enabled) },
 	];
@@ -61,8 +63,13 @@
 		});
 		document.body.append(el);
 
-		el.classList.toggle('collapsed', !!saved.collapsed);
+		const compact = !!(window.Blockbench && Blockbench.isMobile);
+		el.classList.toggle('horizontal', compact);
+		el.classList.toggle('collapsed', saved.collapsed === undefined ? compact : !!saved.collapsed);
 		place(saved.x, saved.y);
+		// the interface layout settles after boot: re-apply the default position
+		setTimeout(() => place(saved.x, saved.y), 400);
+		setTimeout(() => place(saved.x, saved.y), 1500);
 
 		// Don't steal focus / start text selection; act on pointerup for zero latency.
 		el.addEventListener('pointerdown', e => {
@@ -110,7 +117,10 @@
 		const tm = el.querySelector('[data-id="touch_mode"]');
 		if (tm) tm.classList.toggle('active', !!BBTouch.enabled);
 		const col = el.querySelector('.bbt_collapse i');
-		if (col) col.textContent = el.classList.contains('collapsed') ? 'expand_more' : 'expand_less';
+		if (col) {
+			const c = el.classList.contains('collapsed'), hz = el.classList.contains('horizontal');
+			col.textContent = hz ? (c ? 'chevron_right' : 'chevron_left') : (c ? 'expand_more' : 'expand_less');
+		}
 	}
 
 	function place(x, y) {
@@ -120,8 +130,9 @@
 			// default: inside the left edge of the 3D viewport
 			const c = window.Preview && Preview.selected && Preview.selected.canvas;
 			const r = c && c.isConnected ? c.getBoundingClientRect() : null;
-			x = r && r.width ? r.left + 8 : 8;
+			x = r && r.width ? r.left + 30 : 8; // clear of the sidebar edge toggle (ui.js)
 			y = r && r.height ? r.top + 8 : Math.round(vh * 0.15);
+			if (el.classList.contains('horizontal') && r && r.height) y = r.bottom - h - 8;
 		}
 		x = Math.min(Math.max(x, 0), Math.max(vw - w, 0));
 		y = Math.min(Math.max(y, 0), Math.max(vh - h, 0));

@@ -27,6 +27,8 @@ function check(name, ok, info) {
 			viewport: { width: 1180, height: 820 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true,
 		});
 		const page = await context.newPage();
+		// keep the floating toolbar at the far left (over the sidebar), clear of the pinch fingers
+		await page.addInitScript(() => { try { localStorage.setItem('bbtouch.toolbar', JSON.stringify({ x: 8, y: 120 })); } catch (e) {} });
 		const errors = [];
 		page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 		page.on('pageerror', e => errors.push('pageerror: ' + e.message));
