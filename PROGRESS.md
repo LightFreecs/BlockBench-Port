@@ -63,6 +63,9 @@ palm-first orbit reverted when the pen lands; finger mode 2-finger tap = clean u
 test pad, outside-tap close; double-tap event toggles eraser; UV editor: pen paints, pinch zoom + 1-finger pan in
 Pencil-only, finger paints + 2-finger pinch without paint in finger mode; edit mode: pen tap selects without gestures.
 
+**CI:** Build IPA run #8 (merge of M5 + M7, commit `8dcb53d`) green: web job + unsigned IPA (xcodebuild compiled
+`BBBridgeViewController`, SPM resolved `CapacitorHaptics`).
+
 **Known issues / not verified**
 - Headless Chromium only; real Apple Pencil pressure range in WKWebView (`force / maximumPossibleForce`, normal writing
   ≈ 0.2–0.4) → the default "Soft" curve; tune on device. Pointer `width/height` for palms in WKWebView should reflect the
