@@ -59,15 +59,22 @@ fs.cpSync(path.join(root, 'touch'), path.join(www, 'touch'), { recursive: true }
 
 const indexPath = path.join(www, 'index.html');
 let html = fs.readFileSync(indexPath, 'utf8');
-const head = '\t<link rel="stylesheet" href="touch/touch.css" id="bb_touch_stylesheet">\n';
+const head = '\t<link rel="stylesheet" href="touch/touch.css" id="bb_touch_stylesheet">\n'
+	+ '\t<link rel="stylesheet" href="touch/files.css">\n';
+// Capacitor core runtime (window.Capacitor.registerPlugin etc.). The iOS native bridge only
+// injects the low-level bridge, plugins are reached through this. Harmless in a browser.
+const capJs = path.join(root, 'node_modules/@capacitor/core/dist/capacitor.js');
+if (!fs.existsSync(capJs)) throw new Error('node_modules/@capacitor/core missing – run npm ci in the repo root');
+fs.mkdirSync(path.join(www, 'touch/vendor'), { recursive: true });
+fs.copyFileSync(capJs, path.join(www, 'touch/vendor/capacitor.js'));
 // Classic (non-module) script runs before the deferred module bundle, so the
 // touch layer can set up globals/hooks before Blockbench boots.
 // touch.js (core) must come first; the others register on window.BBTouch.
-const touchScripts = ['touch.js', 'modifiers.js', 'gestures.js', 'toolbar.js'];
+const touchScripts = ['touch.js', 'modifiers.js', 'gestures.js', 'toolbar.js', 'files.js'];
 for (const f of touchScripts) {
 	if (!fs.existsSync(path.join(root, 'touch', f))) throw new Error(`touch/${f} missing`);
 }
-const script = touchScripts
+const script = '\t<script src="touch/vendor/capacitor.js"></script>\n' + touchScripts
 	.map((f, i) => `\t<script src="touch/${f}"${i === 0 ? ' id="bb_touch_script"' : ''}></script>\n`)
 	.join('');
 if (!html.includes('</head>')) throw new Error('index.html has no </head>');

@@ -11,14 +11,62 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = CAPBridgeViewController()
         window?.makeKeyAndVisible()
 
+        // Cold start via "Open in Blockbench Touch": copy before Capacitor delivers the URL.
+        BBTouchInbox.importFiles(connectionOptions.urlContexts)
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        BBTouchInbox.importFiles(URLContexts)
         SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
     }
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+    }
+}
+
+/// Files opened from other apps (Files, Mail, AirDrop, …) may live outside the sandbox and are
+/// only readable through a security-scoped URL. Copy them into Documents/Imported/<name> so the
+/// web layer (touch/files.js, via @capacitor/filesystem) can read them; it maps the original URL
+/// to that path. Files already inside our Documents folder are opened in place (not copied).
+enum BBTouchInbox {
+    static func importFiles(_ contexts: Set<UIOpenURLContext>) {
+        for context in contexts where context.url.isFileURL {
+            copyIntoDocuments(context.url)
+        }
+    }
+
+    @discardableResult
+    static func copyIntoDocuments(_ url: URL) -> URL? {
+        let fm = FileManager.default
+        guard let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+        let docsPath = docs.resolvingSymlinksInPath().path
+        if url.resolvingSymlinksInPath().path.hasPrefix(docsPath + "/") {
+            return url
+        }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        let dir = docs.appendingPathComponent("Imported", isDirectory: true)
+        let dest = dir.appendingPathComponent(url.lastPathComponent)
+        var copied = false
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: .withoutChanges, error: &coordError) { readURL in
+            do {
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                if fm.fileExists(atPath: dest.path) {
+                    try fm.removeItem(at: dest)
+                }
+                try fm.copyItem(at: readURL, to: dest)
+                copied = true
+            } catch {
+                NSLog("[BBTouch] could not import \(url.lastPathComponent): \(error)")
+            }
+        }
+        if let coordError = coordError {
+            NSLog("[BBTouch] file coordination failed for \(url.lastPathComponent): \(coordError)")
+        }
+        return copied ? dest : nil
     }
 }
