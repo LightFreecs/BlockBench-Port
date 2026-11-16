@@ -14,7 +14,7 @@
 	document.documentElement.classList.add('bb-touch');
 
 	const BBTouch = window.BBTouch = window.BBTouch || {};
-	BBTouch.version = '0.3.0';
+	BBTouch.version = '1.0.0';
 
 	// --- storage -----------------------------------------------------------
 	const PREFIX = 'bbtouch.';

@@ -81,7 +81,9 @@ touchScripts.push('mesh-tools.js', 'generic.js', 'export.js');
 for (const f of touchScripts) {
 	if (!fs.existsSync(path.join(root, 'touch', f))) throw new Error(`touch/${f} missing`);
 }
-const script = '\t<script src="touch/vendor/capacitor.js"></script>\n' + touchScripts
+// M8: net.js (privacy/offline guard) first, before anything can issue a request.
+if (!fs.existsSync(path.join(root, 'touch/net.js'))) throw new Error('touch/net.js missing');
+const script = '\t<script src="touch/net.js"></script>\n\t<script src="touch/vendor/capacitor.js"></script>\n' + touchScripts
 	.map((f, i) => `\t<script src="touch/${f}"${i === 0 ? ' id="bb_touch_script"' : ''}></script>\n`)
 	.join('');
 if (!html.includes('</head>')) throw new Error('index.html has no </head>');
