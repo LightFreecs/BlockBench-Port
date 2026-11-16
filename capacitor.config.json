@@ -1,0 +1,15 @@
+{
+	"appId": "com.lightfreecs.blockbenchtouch",
+	"appName": "Blockbench Touch",
+	"webDir": "www",
+	"loggingBehavior": "debug",
+	"ios": {
+		"contentInset": "never",
+		"scrollEnabled": false,
+		"backgroundColor": "#1e2127",
+		"preferredContentMode": "desktop",
+		"allowsLinkPreview": false,
+		"limitsNavigationsToAppBoundDomains": false,
+		"webContentsDebuggingEnabled": true
+	}
+}

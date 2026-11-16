@@ -1,0 +1,28 @@
+node_modules/
+/www/
+.DS_Store
+*.log
+
+# upstream build outputs
+/blockbench/node_modules/
+/blockbench/dist/
+/blockbench/dist-electron/
+/blockbench/docs/
+/blockbench/types/generated/
+
+# iOS / Capacitor build artifacts
+/ios/App/App/public/
+/ios/App/App/capacitor.config.json
+/ios/App/App/config.xml
+/ios/App/build/
+/ios/App/DerivedData/
+/ios/App/Pods/
+/ios/App/output/
+/ios/DerivedData/
+xcuserdata/
+*.xcuserstate
+/build/
+*.ipa
+
+# test output scratch
+/test-results/

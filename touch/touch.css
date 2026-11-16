@@ -1,0 +1,9 @@
+/* Blockbench Touch layer styles. Scoped under html.bb-touch. */
+html.bb-touch,
+html.bb-touch body {
+	/* Prevent iOS rubber-band scrolling, text-selection callouts and tap flashes. */
+	overscroll-behavior: none;
+	-webkit-touch-callout: none;
+	-webkit-tap-highlight-color: transparent;
+	-webkit-text-size-adjust: 100%;
+}
