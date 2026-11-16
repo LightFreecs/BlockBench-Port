@@ -54,7 +54,8 @@ Move by…, box select by drag (no orbit) and back to orbit, Create Texture (tem
 UV face drag, bone wrap, Animate tab ≥34 px, add animation, keyframe button, ruler scrub, timeline pinch, start/play/pause, graph editor,
 Quick Export of 4 formats (GLB magic `glTF`, glTF meshes+animations+embedded image, OBJ v/vt/f + mtllib + MTL + PNG, FBX header/
 geometry/AnimationStack), options remembered, Share all, .bbmodel save + reopen (mesh/texture/bone/animation), Humanoid preset.
-CI web job now also runs `scripts/test-generic.cjs`.
+CI web job now also runs `scripts/test-generic.cjs`. CI: Build IPA run #6 green (web + generic test, unsigned IPA) —
+https://github.com/LightFreecs/BlockBench-Port/actions/runs/43838151311
 
 **Known issues**
 - No lasso select (upstream has none); box select only.
