@@ -1,5 +1,37 @@
 # Progress
 
+## Status summary (after M8)
+
+**What it is:** Blockbench 5.2.2 (unmodified upstream web build) + a touch layer (`touch/*.js|css`) in a Capacitor 8 iOS
+shell, built as an unsigned IPA by GitHub Actions (`Build IPA`). See `README.md` for features, gestures and sideloading.
+
+**What works (verified in headless Chromium, iPad 1180×820 + iPhone 844×390/390×844 emulation, CDP multi-touch / pen):**
+viewport gestures + sticky modifiers (M3) · Files integration against a mocked Capacitor (M4) · Generic Model workflow
+end-to-end incl. Quick Export GLB/glTF/OBJ/FBX/.bbmodel (M5) · long-press menus, slider scrub/keypad, menus, sidebars,
+outliner hold-then-drag, compact toolbar (M6/M8) · Pencil pressure/palm rejection/brush bar/double-tap + squeeze events (M7/M8)
+· offline boot + Generic Model flow with all non-local hosts blocked, telemetry/update checks never sent (M8).
+`npm test` = 7 suites, ~280 checks (smoke, touch, files, ui, generic, pencil, offline); CI runs them all on every push.
+
+**Verified only by compiling in CI (macOS, Xcode 26.3):** the Swift code (document import copy, `BBBridgeViewController`
+Pencil double-tap/squeeze), Info.plist document types, SPM plugins (App, Filesystem, Share, Haptics, Preferences),
+app icon / launch screen assets.
+
+**Must be checked on a real device** — device test checklist:
+1. Install via AltStore/Sideloadly; app icon + dark splash show, app opens into the start screen (no white flash).
+2. Settings › About shows *Blockbench Touch 1.0.0 (build = CI run number)*; works in Airplane mode (start screen, new model, export).
+3. Viewport: 1-finger orbit, 2-finger pan/pinch, tap select, double-tap focus, long-press menu while holding, 2/3-finger tap undo/redo.
+4. Floating toolbar: Shift once/lock, drag by grip, collapse; on iPhone portrait swipe the horizontal toolbar sideways (no button fires).
+5. Menus: tap File, tap Edit (switches), tap Edit again (closes); submenu opens on tap; Quick Actions without keyboard.
+6. Outliner: long press = menu; long press then drag = re-order; short tap selects.
+7. Number slider: drag = scrub, tap = keypad, hold = slider menu. Dialog number field → keypad.
+8. Generic Model: preset Humanoid, Mesh Tools (face mode, extrude, subdivide, box select), UV editor pinch, Animate bar, Quick Export all formats.
+9. Files: Save (first save dialog, then silent Ctrl+S-style saves), Save As, export → *Files › On My iPad › Blockbench Touch › Exports*,
+   Share sheet anchored correctly on iPad, *Open in Blockbench Touch* from Files/Mail for .bbmodel/.glb/.obj, Backups/ appear.
+10. Apple Pencil: pressure range feels right (Soft curve), palm resting while drawing doesn't paint/orbit, Pencil-only Auto toast,
+    double-tap (Pencil 2) and squeeze (Pencil Pro, iOS 17.5+) do the system action, haptics on tool switch.
+11. Keyboard: renaming in the outliner / dialog text fields isn't covered by the keyboard; layout doesn't jump.
+12. Rotate the device: viewport, toolbar position and sidebars re-layout.
+
 | # | Milestone | Status |
 |---|-----------|--------|
 | 1 | Scaffold | done |
@@ -9,9 +41,66 @@
 | 5 | Generic Model workflow (main feature) | done |
 | 6 | UI touch improvements | done |
 | 7 | Apple Pencil | done |
-| 8 | Polish + README | pending |
+| 8 | Polish + README | done |
 
 ## Log
+
+### M8 — Polish, robustness, docs, final review (done)
+
+**Fixes**
+- **Flaky `ipad: tap on open menu closes it`** — root cause: upstream `unselectInterface` (document `touchstart`/`mousedown`) only
+  spares the open menu-bar label when `.menu_bar_point.opened:hover` matches; after a touch `:hover` is updated asynchronously, so on
+  a slow/loaded machine the menu closed on `touchstart` and the label's `click` re-opened it. Reproduced deterministically with
+  `BBT_CPU_THROTTLE=6 node scripts/test-ui.cjs` (0/3 before, 3/3 after). Fix in `touch/ui.js`: those events on the open label don't
+  reach `unselectInterface`. (The same race would have hit WKWebView.)
+- **Outliner 320 ms drag vs 450 ms long press** — now iOS-style: hold → menu; keep holding and move → the menu closes and upstream's
+  already-armed re-order drag continues (`touch/longpress.js`; the drag helper is hidden, not destroyed). Test added.
+- **Floating toolbar on small screens** — the expanded horizontal toolbar (706 px) overflowed iPhone portrait / SE landscape; it now
+  fits the screen and scrolls sideways (swipe ≠ press, `touch-action: pan-x`). Test (iPhone portrait) added.
+- **Duplicate "Saved as …" quick message** after iOS exports — muted while upstream's export callback runs. Test added.
+- **Pencil Pro squeeze** (iOS 17.5+) → `bbtouchPencilTap` with `kind: 'squeeze'` and the system squeeze preference
+  (palettes → colour popover). Test for the JS side; Swift compile-checked in CI.
+
+**Privacy / offline** (`touch/net.js`, loaded before everything else): blocks upstream telemetry (`blckbn.ch/api/event/*` —
+new_installation, recurring_user, successful_update, install_plugin; `blckbn.ch/api/stats/*`), the About dialog's GitHub update
+check, redirects remote start-screen news to the bundled `content/news.json` (upstream's `Promise.all` on it had no `.catch` →
+unhandled rejection offline), soft-fails the boot-time theme update fetch, never registers a service worker (no 404).
+Plugin / theme store stay usable and fail gracefully offline. `scripts/test-offline.cjs` aborts every non-local request and checks
+boot, blocked URLs never reaching the network, About, Generic Model (preset, extrude, texture, animation), Quick Export of 5 formats,
+no uncaught errors / unhandled rejections.
+
+**App identity:** `scripts/make-icons.sh` (ImageMagick) builds a full-bleed 1024 px opaque AppIcon from `blockbench/icon.png`
+(bench on Blockbench blue, long shadow, orange "touch" badge) and a 2732 px dark (`#1e2127`) launch splash; launch storyboard
+background matches the web view background. Version 1.0.0 (`MARKETING_VERSION`), build number = CI run number
+(`CURRENT_PROJECT_VERSION=${{ github.run_number }}`). Display name stays *Blockbench Touch*. Previews: `docs/brand/`.
+
+**CI:** actions bumped to the current Node-24 majors (checked that the tags exist and `runs.using: node24`): checkout@v7,
+setup-node@v7, cache@v6, upload-artifact@v7; Xcode pinned to **26.3**; the web job runs the full `npm test`; manual runs with
+input `release=true` publish the IPA as a prerelease `v1.0.0-<run>` (softprops/action-gh-release@v3).
+
+**Docs:** `README.md` (features, screenshots, gesture cheat sheet, getting the IPA, AltStore / Sideloadly / TrollStore / Developer
+Mode, building, upstream update procedure, troubleshooting, credits), `LICENSE` (GPL-3.0, from upstream).
+
+**Review** (all `touch/*.js`, Swift, Info.plist): no stray debug logging (two one-line info logs kept; the smoke test checks one),
+listeners are attached once (popovers/dialogs are recreated with their elements), every `window.Capacitor` use is guarded — verified
+by booting with no Capacitor at all (Humanoid preset + export, no errors). `webContentsDebuggingEnabled` stays on (Safari Web
+Inspector for troubleshooting a private build).
+
+**How to test**
+```
+npm run build:fast
+npm test                                  # 7 suites; run 3× in a row: all green
+npm run test:offline                      # 11 checks
+BBT_CPU_THROTTLE=6 node scripts/test-ui.cjs --only ipad   # race check under a 6× slower CPU
+scripts/make-icons.sh                     # regenerate icon + splash
+```
+
+**Known issues / device-only**
+- Everything in the device checklist above; Swift/native paths are compile-checked only.
+- `Imported/` files with the same name are overwritten by the next "Open in" (M4).
+- Bar labels are English only (M5); no lasso select; Subdivide has no smoothing.
+- Palm rejection covers the 3D viewport and UV editor only (M7).
+- The horizontal toolbar on iPhone portrait needs a swipe to reach the last buttons.
 
 ### M7 — Apple Pencil + painting (done)
 
@@ -70,7 +159,7 @@ Pencil-only, finger paints + 2-finger pinch without paint in finger mode; edit m
 - Headless Chromium only; real Apple Pencil pressure range in WKWebView (`force / maximumPossibleForce`, normal writing
   ≈ 0.2–0.4) → the default "Soft" curve; tune on device. Pointer `width/height` for palms in WKWebView should reflect the
   touch radius — verify the 56 px threshold on device.
-- The double-tap Swift code compiles in CI but is untested on hardware. iOS 17.5+ squeeze (Pencil Pro) is not handled.
+- The double-tap Swift code compiles in CI but is untested on hardware. Squeeze (Pencil Pro) added in M8, also untested on hardware.
 - Pressure modifies size/opacity per dab; `draw_shape_tool`/`gradient_tool`/fill ignore pressure (upstream behaviour).
 - Palm rejection is limited to the 3D viewport and the UV editor; panels elsewhere get normal touch.
 
@@ -184,10 +273,8 @@ would sit under the pinch fingers).
 - Headless Chromium only. iOS WKWebView compat-mouse/click behaviour after `preventDefault` on `touchend` should match,
   but a device check is needed (esp. the iOS "hover content change swallows the click" heuristic on menus — mitigated by
   blocking compat mouseover).
-- No real haptics: `@capacitor/haptics` isn't installed (`navigator.vibrate` doesn't exist on iOS). Add the plugin later
-  and longpress.js uses it automatically.
-- The outliner still starts its upstream drag at 320 ms; if you move between 320 and 450 ms it's a re-order drag
-  (intended), holding still gives the menu.
+- ~~No real haptics~~ — resolved in M7 (`@capacitor/haptics`).
+- ~~Outliner drag 320 ms vs long press 450 ms~~ — resolved in M8 (hold → menu, then move on → drag).
 - Keyboard lifting only handles inputs inside dialogs / action search; inputs in panels rely on WKWebView's own scrolling
   (document scroll is locked to 0 so the layout doesn't jump).
 - Wider `::-webkit-scrollbar` has no effect where iOS uses overlay scrollbars.
@@ -256,7 +343,7 @@ Also run in CI (web job, screenshot artifact `test-results/files.png`). Screensh
 - Backups cover the *current* project only (other open tabs are backed up when they become current and change).
 - The share sheet needs a source rect on iPad; the Share plugin anchors it itself — verify it doesn't appear off-screen.
 - `Documents/.share/` (hidden) keeps the last shared .zip; harmless.
-- Upstream still shows its own "Saved as …" quick message after exports in addition to our dialog.
+- ~~Upstream still shows its own "Saved as …" quick message~~ — resolved in M8.
 
 **Notes for M5 (Generic Model export flow)**
 - Generic Model exports already land in `Exports/`: `Codecs.gltf.export()` (asks encoding/embed/scale/animations), `Codecs.obj.export()`,
@@ -287,8 +374,8 @@ Concurrency cancels superseded runs on the same ref.
 Unzip it, then sideload with AltStore / Sideloadly / TrollStore; these re-sign the app with your Apple ID. Needs a GitHub login.
 
 **Known issues**
-- Runner warning: the v4 actions (checkout/setup-node/cache/upload-artifact) target Node 20 and are forced to run on Node 24. Harmless; bump the major versions later.
-- `latest-stable` Xcode can change under us. If a future Xcode breaks the build, pin `xcode-version` (e.g. `'26.3'`).
+- ~~Node 20 action warning~~ — resolved in M8 (Node-24 majors).
+- ~~`latest-stable` Xcode~~ — pinned to 26.3 in M8.
 - The app has not been run on a device yet; a launch check comes with M3/M4 testing.
 
 ### M1 — Scaffold (done)
@@ -321,9 +408,8 @@ npm run sync           # build + npx cap sync ios (copies www/ into ios/App/App/
 ```
 
 **Gotchas**
-- Upstream registers `./service_worker.js` in web mode; we don't ship one → harmless 404 caught by upstream
-  (service workers don't work on the `capacitor://` scheme anyway). Smoke test whitelists it.
-- Upstream calls `blckbn.ch` stats APIs → CORS errors on localhost; benign. May want to stub these later (privacy/offline).
+- Upstream registers `./service_worker.js` in web mode; we don't ship one — since M8 `touch/net.js` skips the registration (no 404).
+- ~~Upstream calls `blckbn.ch` stats APIs~~ — blocked by `touch/net.js` (M8).
 - `ios/App/App/public`, `ios/App/App/capacitor.config.json`, `config.xml` are generated by `cap sync` and gitignored.
   `ios/capacitor-cordova-ios-plugins` is also gitignored (Capacitor default) — `cap sync` recreates it.
 - `Package.swift` references `../../../node_modules/@capacitor/*` → root `npm ci` must run before `xcodebuild`.
@@ -379,9 +465,9 @@ Uses CDP `Input.dispatchTouchEvent` (real multi-touch → touch + pointer events
 
 **Known issues / not verified**
 - Only tested in headless Chromium; WKWebView pointer-event ordering should match but needs a device check (esp. pencil = `pen`).
-- Long-press context menu still opens on finger lift (upstream behaviour); an iOS-style "open while holding" belongs to M6.
+- ~~Long-press context menu opens on finger lift~~ — resolved in M6 (opens while holding).
 - Zoom-to-pinch-centre assumes the target is near the focal plane; fine in practice.
-- Toolbar is ~600 px tall expanded — on iPhone landscape collapse it (or M6 could add a horizontal layout).
+- ~~Toolbar too tall on iPhone landscape~~ — resolved: horizontal + collapsed on compact layouts (M6), scrollable when too wide (M8).
 - Selection by tap is replayed on lift, so tools that need a press-and-drag on elements with 1 finger (other than gizmo, paint,
   knife, weight brush) won't get it; add their ids to `passthroughTool()` in `gestures.js` if found (e.g. vertex snap is click-based
   and works).
