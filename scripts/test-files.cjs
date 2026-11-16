@@ -200,10 +200,11 @@ async function main() {
 		await ev(() => { Project.name = 'testmodel'; });
 
 		// --- glTF (ascii, embedded textures) -----------------------------------------
-		await ev(() => { Codecs.gltf.export(); });
+		await ev(() => { document.getElementById('quick_message_box')?.remove(); Codecs.gltf.export(); });
 		await waitDialog(() => Dialog.open && Dialog.open.id == 'export_options');
 		await ev(() => { Dialog.open.setFormValues({ encoding: 'ascii', embed_textures: true }); Dialog.open.confirm(); });
 		check('glTF export shows "Exported" dialog', await savedOpen());
+		{ const qm = await ev(() => { const q = document.getElementById('quick_message_box'); return q ? q.textContent : null; }); check('…without upstream\'s extra "Saved as" quick message', !qm, qm); }
 		await closeDialog();
 		r = await ev(() => {
 			const t = __mock.text('Exports/testmodel.gltf'); let j = null; try { j = JSON.parse(t); } catch (e) { /* */ }

@@ -121,6 +121,18 @@
 			if (t.closest('.menu_bar_point, ul.contextMenu li, .contextMenu .menu_more_button')) e.stopImmediatePropagation();
 		}, { capture: true });
 	});
+	// Tap on the label of the open menu-bar menu: upstream's unselectInterface (document
+	// touchstart/mousedown) only spares the label when it matches `:hover`, which after a
+	// touch is updated asynchronously (Chromium and WebKit). If it isn't yet, the menu is
+	// closed on touchstart and the following click re-opens it. Keep those events away
+	// from unselectInterface; the label's own click handler then toggles it closed.
+	['touchstart', 'mousedown'].forEach(type => {
+		window.addEventListener(type, e => {
+			if (!active() || (type === 'mousedown' && !recentTouch())) return;
+			const t = e.target instanceof Element ? e.target : null;
+			if (t && t.closest('#menu_bar .menu_bar_point.opened')) e.stopPropagation();
+		}, { capture: true });
+	});
 	// Tap on a submenu parent opens it (click on li.parent does not close the menu upstream).
 	window.addEventListener('pointerup', e => {
 		if (!active() || e.pointerType === 'mouse') return;

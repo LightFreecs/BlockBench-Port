@@ -399,7 +399,13 @@
 				F.recent.add(result.paths[0], 'export');
 			}
 			F.last_export = { options, file_name, result };
-			if (typeof callback == 'function') { try { callback(baseName(result.paths[0])); } catch (e) { console.error(e); } }
+			if (typeof callback == 'function') {
+				// upstream callbacks (codec.afterDownload/afterSave) show "Saved as …" — we show our own
+				// message / dialog, so mute quick messages while the (synchronous) callback runs
+				const qm = Blockbench.showQuickMessage;
+				Blockbench.showQuickMessage = function () {};
+				try { callback(baseName(result.paths[0])); } catch (e) { console.error(e); } finally { Blockbench.showQuickMessage = qm; }
+			}
 			if (in_place) quick(`Saved ${result.paths[0]}`);
 			else if (F.quiet) { F.last_saved = result; BBT.emit('files_saved', result); } // M5 Quick Export batches: own summary
 			else F.showSavedDialog(result);

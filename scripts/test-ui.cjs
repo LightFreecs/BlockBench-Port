@@ -30,6 +30,8 @@ async function setupPage(browser, device) {
 	page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 	page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 	const cdp = await context.newCDPSession(page);
+	// BBT_CPU_THROTTLE=4 simulates a slow/loaded machine (shakes out timing races)
+	if (process.env.BBT_CPU_THROTTLE) await cdp.send('Emulation.setCPUThrottlingRate', { rate: +process.env.BBT_CPU_THROTTLE });
 	const sleep = ms => page.waitForTimeout(ms);
 	const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', {
 		type, touchPoints: points.map((p, i) => ({ x: p[0], y: p[1], id: p[2] ?? i, radiusX: 5, radiusY: 5, force: 1 })),
@@ -128,6 +130,29 @@ async function runIPad(browser) {
 		await page.evaluate(() => Undo.undo());
 	} else check('ipad: context menu has a duplicate entry', false);
 	await closeMenus();
+
+	// hold (menu opens), then drag on = upstream re-order drag continues, menu closes
+	{
+		const rr = n => page.evaluate(n => {
+			const r = document.getElementById(Outliner.elements.find(e => e.name === n).uuid).querySelector('.outliner_object').getBoundingClientRect();
+			return { x: r.left + 80, top: r.top, h: r.height };
+		}, n);
+		const a = await rr('leg_right'), b = await rr('body');
+		await T.touch('touchStart', [[a.x, a.top + a.h / 2]]);
+		await sleep(650);
+		const menu_during = await page.evaluate(() => !!Menu.open);
+		for (let s2 = 1; s2 <= 14; s2++) {
+			await T.touch('touchMove', [[a.x, a.top + a.h / 2 + (b.top + 4 - a.top - a.h / 2) * s2 / 14]]);
+			await sleep(20);
+		}
+		const helper_vis = await page.evaluate(() => { const h = document.getElementById('outliner_drag_helper'); return !!h && getComputedStyle(h).visibility !== 'hidden'; });
+		await T.touch('touchEnd', []);
+		await sleep(200);
+		st = await page.evaluate(() => ({ menu: !!Menu.open, first: Outliner.root[0] && Outliner.root[0].name, helper: !!document.getElementById('outliner_drag_helper') }));
+		check('ipad: outliner hold → menu, then drag on → re-order (menu closes)', menu_during && helper_vis && !st.menu && st.first === 'leg_right' && !st.helper, { menu_during, helper_vis, ...st });
+		if (st.first === 'leg_right') await page.evaluate(() => Undo.undo());
+		await closeMenus();
+	}
 
 	// short tap on outliner row = select, no menu
 	console.log('      before tap:', JSON.stringify(await page.evaluate(([x, y]) => ({ sel: Outliner.selected.map(e => e.name), el: document.elementFromPoint(x, y).className, menu: !!Menu.open, kp: BBTouch.inputs.keypad.isOpen() }), [row.x, row.y + row.h])));
@@ -256,6 +281,8 @@ async function runIPad(browser) {
 	await tap(mEdit.x, mEdit.y);
 	st = await page.evaluate(() => ({ open: !!Menu.open, id: MenuBar.open && MenuBar.open.id }));
 	check('ipad: tap on another menu switches (no open/close flicker)', st.open && st.id === 'edit', st);
+	// (was flaky: upstream closed on touchstart when `:hover` lagged and the click re-opened;
+	// reproducible with BBT_CPU_THROTTLE=6 — fixed in touch/ui.js)
 	await tap(mEdit.x, mEdit.y);
 	st = await page.evaluate(() => !!Menu.open);
 	check('ipad: tap on open menu closes it', !st);
@@ -439,6 +466,27 @@ async function runIPhone(browser) {
 		await page.evaluate(() => BBTouch.gestures.frameAll());
 		await sleep(500);
 		await page.screenshot({ path: path.join(root, 'docs/screenshots/m6-iphone.png') });
+	}
+	// iPhone portrait: the expanded horizontal toolbar doesn't fit → it scrolls sideways,
+	// a swipe on it doesn't press a button, a tap still does
+	{
+		await page.setViewportSize({ width: 390, height: 844 });
+		await sleep(400);
+		await page.evaluate(() => { const el = BBTouch.toolbar.element; if (el.classList.contains('collapsed')) BBTouch.toolbar.press('collapse'); });
+		await sleep(150);
+		const r = await page.evaluate(() => { const el = BBTouch.toolbar.element, b = el.querySelector('.bbt_body').getBoundingClientRect(), t = el.getBoundingClientRect();
+			return { x: b.left, y: b.top + b.height / 2, w: b.width, right: t.right, sw: el.querySelector('.bbt_body').scrollWidth }; });
+		const h0 = await page.evaluate(() => Undo.history.length + ':' + Outliner.elements.length);
+		await drag([r.x + r.w - 30, r.y], [r.x + r.w - 230, r.y], 10);
+		st = await page.evaluate(() => ({ sl: BBTouch.toolbar.element.querySelector('.bbt_body').scrollLeft, h: Undo.history.length + ':' + Outliner.elements.length,
+			mods: ['shift', 'ctrl', 'alt'].map(m => BBTouch.modifiers.get(m)).join() }));
+		check('iphone portrait: toolbar fits the screen and swipes sideways (no press)', r.right <= 390 && r.sw > r.w && st.sl > 50 && st.h === h0 && st.mods === 'off,off,off', { ...r, ...st, h0 });
+		await page.evaluate(() => { BBTouch.toolbar.element.querySelector('.bbt_body').scrollLeft = 0; });
+		const b = await page.evaluate(() => { const r = BBTouch.toolbar.element.querySelector('[data-id="shift"]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+		await tap(b.x, b.y);
+		st = await page.evaluate(() => BBTouch.modifiers.get('shift'));
+		check('iphone portrait: tap on a toolbar button still works', st !== 'off', st);
+		await page.evaluate(() => { BBTouch.modifiers.set ? BBTouch.modifiers.set('shift', 'off') : BBTouch.modifiers.tap('shift'); });
 	}
 	const bad = T.errors.filter(e => !/service_worker|blckbn\.ch|ERR_FAILED|404|CORS/i.test(e));
 	check('iphone: no page errors', bad.length === 0, bad.slice(0, 5));

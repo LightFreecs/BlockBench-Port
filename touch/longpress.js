@@ -10,8 +10,9 @@
  *  - a progress ring grows under the finger while holding (visual feedback),
  *    plus a short vibration where supported / Capacitor Haptics if installed.
  *  - after it fired, the rest of the touch sequence is swallowed: no scroll,
- *    no upstream drag (e.g. outliner re-ordering), no click on the menu item that
- *    opened under the finger.
+ *    no click on the menu item that opened under the finger. Exception: in the
+ *    outliner (upstream arms its re-order drag at 320 ms) moving the finger on after
+ *    the menu opened closes the menu and continues the drag ("hold, then drag").
  *  - toolbar buttons (`.tool` with a `.tooltip`): the long press first shows the
  *    tooltip (hover tooltips are disabled in touch mode, see ui.css); keep holding
  *    another ~600 ms for the context menu.
@@ -26,6 +27,7 @@
 	cfg.ui_long_press_ms = cfg.ui_long_press_ms || 450;
 	cfg.ui_long_press_slop = cfg.ui_long_press_slop || 10;
 	cfg.tooltip_menu_extra_ms = cfg.tooltip_menu_extra_ms || 650;
+	cfg.ui_long_press_drag_px = cfg.ui_long_press_drag_px || 18;
 
 	const LP = BBTouch.longpress = { fired_count: 0, last_target: null, last_touch_time: 0 };
 	const synthetic = new WeakSet();
@@ -87,9 +89,11 @@
 		LP.fired_count++;
 		LP.last_target = target;
 		target.dispatchEvent(ev);
-		// upstream outliner starts a drag after 320 ms on touch – its helper must not linger
+		// upstream outliner/collections start a drag after 320 ms on touch; hide its helper while
+		// the menu is open (not removed: upstream keeps a reference and re-shows it if the
+		// finger then moves on, see touchmove → "hold, then drag")
 		const helper = document.getElementById('outliner_drag_helper');
-		if (helper) helper.remove();
+		if (helper) helper.style.visibility = 'hidden';
 		return ev;
 	};
 
@@ -174,6 +178,20 @@
 	window.addEventListener('touchmove', e => {
 		if (!st) return;
 		if (st.fired) {
+			if (st.drag_through) return;
+			// Hold, then drag (outliner / collections): upstream's re-order drag is already armed
+			// (it starts at 320 ms) — moving on closes the menu and hands the touch to it, like
+			// iOS drag & drop after a context-menu press.
+			const helper = document.getElementById('outliner_drag_helper');
+			const tm = [...e.touches].find(t => t.identifier === st.id);
+			if (helper && tm && e.touches.length === 1 && Math.hypot(tm.clientX - st.x, tm.clientY - st.y) > cfg.ui_long_press_drag_px) {
+				clearTimeout(st.timer2);
+				st.drag_through = true;
+				LP.drag_through_count = (LP.drag_through_count || 0) + 1;
+				if (window.Menu && Menu.open) Menu.open.hide();
+				helper.style.visibility = '';
+				return;
+			}
 			// swallow: no scrolling, no upstream drag, menu stays open
 			if (e.cancelable) e.preventDefault();
 			e.stopImmediatePropagation();
@@ -186,6 +204,7 @@
 	function end(e) {
 		LP.last_touch_time = performance.now();
 		if (!st) return;
+		if (st.fired && st.drag_through) { st = null; return; }
 		if (st.fired) {
 			// no compat mouse events / click on whatever is now under the finger (the menu)
 			if (e.cancelable) e.preventDefault();

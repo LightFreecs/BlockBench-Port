@@ -79,10 +79,15 @@
 		});
 		el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
 		el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
+		// a swipe that scrolls the (horizontal, compact) body is not a press
+		let down = null;
+		el.addEventListener('pointerdown', e => { down = { id: e.pointerId, x: e.clientX, y: e.clientY, sl: body.scrollLeft }; }, true);
 		el.querySelectorAll('.bbt_btn').forEach(btn => {
 			btn.addEventListener('pointerup', e => {
 				e.preventDefault();
 				e.stopPropagation();
+				const d = down; down = null;
+				if (d && d.id === e.pointerId && (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12 || Math.abs(body.scrollLeft - d.sl) > 4)) return;
 				press(btn.dataset.id);
 			});
 		});

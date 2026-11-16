@@ -203,7 +203,20 @@ html.bb-touch-mode.bbt_compact #panel_selector_bar .panel_selector { min-width: 
 /* ---- floating toolbar: horizontal variant (compact layouts) ----------------------- */
 #bbt_toolbar.horizontal { flex-direction: row; width: auto; height: 56px; align-items: center; }
 #bbt_toolbar.horizontal .bbt_grip { transform: none; height: 46px; width: 22px; }
-#bbt_toolbar.horizontal .bbt_body { flex-direction: row; }
+#bbt_toolbar.horizontal .bbt_body {
+	flex-direction: row;
+	/* iPhone portrait / SE landscape: the 13 buttons don't fit → swipe sideways */
+	max-width: calc(100vw - 72px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+	overflow-x: auto;
+	overflow-y: hidden;
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+	touch-action: pan-x;
+}
+#bbt_toolbar.horizontal .bbt_body::-webkit-scrollbar { display: none; }
+#bbt_toolbar.horizontal .bbt_btn, #bbt_toolbar.horizontal .bbt_sep { flex-shrink: 0; }
+#bbt_toolbar.horizontal .bbt_body .bbt_btn { touch-action: pan-x; }
 #bbt_toolbar.horizontal .bbt_btn { width: 46px; min-height: 46px; }
 #bbt_toolbar.horizontal .bbt_sep { width: 1px; height: auto; margin: 4px 3px; }
 #bbt_toolbar.horizontal .bbt_collapse { min-height: 46px; width: 30px; min-width: 30px; }
