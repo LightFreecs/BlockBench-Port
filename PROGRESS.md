@@ -78,6 +78,11 @@ background matches the web view background. Version 1.0.0 (`MARKETING_VERSION`),
 setup-node@v7, cache@v6, upload-artifact@v7; Xcode pinned to **26.3**; the web job runs the full `npm test`; manual runs with
 input `release=true` publish the IPA as a prerelease `v1.0.0-<run>` (softprops/action-gh-release@v3).
 
+**CI result:** Build IPA run #11 (commit `888b4a0`) green — web job ran the full `npm test` (7 suites) on ubuntu-latest, the macOS
+job built the unsigned IPA with Xcode 26.3 (incl. the new squeeze Swift code) —
+https://github.com/LightFreecs/BlockBench-Port/actions/runs/43867867078 . Locally `npm test` passed 3/3 consecutive runs.
+The commit recording this result triggers one more (docs-only) run.
+
 **Docs:** `README.md` (features, screenshots, gesture cheat sheet, getting the IPA, AltStore / Sideloadly / TrollStore / Developer
 Mode, building, upstream update procedure, troubleshooting, credits), `LICENSE` (GPL-3.0, from upstream).
 
