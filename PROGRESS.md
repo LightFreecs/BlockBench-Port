@@ -24,7 +24,7 @@ app icon / launch screen assets.
 5. Menus: tap File, tap Edit (switches), tap Edit again (closes); submenu opens on tap; Quick Actions without keyboard.
 6. Outliner: long press = menu; long press then drag = re-order; short tap selects.
 7. Number slider: drag = scrub, tap = keypad, hold = slider menu. Dialog number field → keypad.
-8. Generic Model: preset Humanoid, Mesh Tools (face mode, extrude, subdivide, box select), UV editor pinch, Animate bar, Quick Export all formats.
+8. Generic Model: start-screen Generic Model entry, Add › Humanoid, Ref › + Front (trace image), Mesh Tools (face mode, extrude, subdivide, box select), UV editor pinch, Animate bar, Quick Export all formats.
 9. Files: Save (first save dialog, then silent Ctrl+S-style saves), Save As, export → *Files › On My iPad › Blockbench Touch › Exports*,
    Share sheet anchored correctly on iPad, *Open in Blockbench Touch* from Files/Mail for .bbmodel/.glb/.obj, Backups/ appear.
 10. Apple Pencil: pressure range feels right (Soft curve), palm resting while drawing doesn't paint/orbit, Pencil-only Auto toast,
@@ -44,6 +44,35 @@ app icon / launch screen assets.
 | 8 | Polish + README | done |
 
 ## Log
+
+### Post-M8 — Reference images (blueprints) + duplicate Generic Model entry removed (done)
+
+**Asked for:** Blender-style background images to trace a character sheet at the start of modeling; and remove our own
+"New Generic Model" quick start because Blockbench already has a Generic Model entry (it showed up twice).
+
+**Built**
+- `touch/reference.js` (new) on top of upstream's `ReferenceImage` system (`blockbench/js/preview/reference_images.ts`,
+  already saved in the .bbmodel, already supports "blueprint" images pinned to an ortho view):
+  - Mesh Tools bar › **Ref** tab: **+ Front / + Right / + Back / + Left / + Top** (switch to that ortho view, image-only
+    picker → `accept="image/*"` so iOS offers Photos / Camera / Files, place as blueprint, background layer, 60 % opacity,
+    open editing with it selected), **Front / Side / Top / 3D View**, **Edit ⇄ Done**, **Opacity** (slider dialog),
+    **Show/Hide**, **Delete**. "Front" follows `Format.forward_direction` (Generic Model −Z → north view).
+  - Editing: 1-finger drag / corner handles (upstream), **2-finger pinch = resize + move** (new). Camera gestures are
+    suspended while a reference is being edited; after Done the image sits behind the canvas and ignores touches.
+  - Fixes for upstream behaviour on touch: Mesh Tools taps no longer end editing (body-level shield), Mesh Tools bar
+    raised above upstream's per-image toolbar while editing (`generic.css`), no "File Type" pre-dialog for images.
+- Removed the duplicate quick start from `touch/generic.js` / `generic.css`: start-screen card, File › *New Generic
+  Model…* item, floating-toolbar ➕ button and the presets dialog. New projects use upstream's start-screen **Generic Model**
+  entry / File › New. `BBTouch.generic.newModel(preset)` stays as an API; the rigged **Humanoid** base moved to
+  Mesh Tools › Add.
+- Tests: new `scripts/test-reference.cjs` (`npm run test:reference`, 20 checks, part of `npm test`); `test-generic.cjs`
+  step 1 now goes through the upstream start screen entry; `test-offline.cjs` checks the upstream entry.
+- Docs: README feature list + screenshot, `docs/GENERIC_MODEL_GUIDE.md` §1 (start) and new §1b (trace a character
+  sheet); screenshots `ref-added.png`, `ref-editing.png`, `ref-traced.png`, refreshed `m5-*.png`.
+
+**Device checks to add:** + Front opens Photos / Camera / Files; pinch-resize feels right; Done → orbit/zoom work and
+the image stays aligned with the model while zooming the ortho view.
+
 
 ### M8 — Polish, robustness, docs, final review (done)
 

@@ -77,7 +77,7 @@ fs.copyFileSync(capJs, path.join(www, 'touch/vendor/capacitor.js'));
 // M7: pencil.js right after touch.js – its window capture listeners must run before gestures.js.
 const touchScripts = ['touch.js', 'pencil.js', 'modifiers.js', 'gestures.js', 'toolbar.js', 'files.js', 'longpress.js', 'inputs.js', 'ui.js'];
 // M5 (Generic Model workflow): mesh-tools.js before generic.js (generic uses BBTouch.meshTools).
-touchScripts.push('mesh-tools.js', 'generic.js', 'export.js');
+touchScripts.push('mesh-tools.js', 'generic.js', 'export.js', 'reference.js');
 for (const f of touchScripts) {
 	if (!fs.existsSync(path.join(root, 'touch', f))) throw new Error(`touch/${f} missing`);
 }

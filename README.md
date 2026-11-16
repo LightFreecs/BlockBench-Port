@@ -18,11 +18,15 @@ animation, export to glTF / GLB / OBJ / FBX).
 - **Touch viewport**: orbit, pan, pinch-zoom, tap select, double-tap focus, long-press menus, 2-/3-finger undo/redo,
   bigger gizmo and easier picking.
 - **Floating toolbar** with sticky **Shift / Ctrl / Alt**, undo/redo, focus, duplicate, delete, Pencil settings,
-  Quick Actions, New Generic Model, Quick Export. Vertical on iPad, horizontal (swipeable) on iPhone.
-- **Generic Model workflow** ([illustrated guide](docs/GENERIC_MODEL_GUIDE.md)): start-screen presets (Blank, Cube,
-  Sphere, Cylinder, Ico Sphere, Humanoid rig), **Mesh Tools bar** (select modes, Box Select, add primitives, extrude,
-  inset, **subdivide**, loop cut, knife, merge, Move by…, UV tools…), **Animate bar**, timeline pinch-zoom,
-  **Quick Export** to GLB / glTF / OBJ / FBX / .bbmodel in one tap.
+  Quick Actions, Quick Export. Vertical on iPad, horizontal (swipeable) on iPhone.
+- **Generic Model workflow** ([illustrated guide](docs/GENERIC_MODEL_GUIDE.md)): start from Blockbench's own
+  **Generic Model** entry, then the **Mesh Tools bar** (select modes, Box Select, add primitives + a rigged Humanoid
+  base, extrude, inset, **subdivide**, loop cut, knife, merge, Move by…, UV tools…), **Animate bar**, timeline
+  pinch-zoom, **Quick Export** to GLB / glTF / OBJ / FBX / .bbmodel in one tap.
+- **Reference images / blueprints** (like Blender's background images): Mesh Tools › **Reference** › *+ Front / Right /
+  Back / Left / Top* picks a character sheet or concept image (Photos, Camera or Files) and pins it behind the model in
+  that orthographic view, half-transparent, so you can trace the shape. Pinch to resize, drag to move, **Done** to lock it
+  behind the model; Front / Side / Top / 3D view buttons; opacity, show/hide, delete. Saved inside the .bbmodel.
 - **Touch-friendly UI**: long press = right click everywhere, finger-sized menus/rows/buttons, number sliders you can
   scrub (with precision mode) or tap for a **keypad**, sidebar edge toggles, menus that behave on tap.
 - **Apple Pencil**: pressure → brush size/opacity (with curves), tilt, palm rejection, *Pencil only draws* mode,
@@ -34,8 +38,8 @@ animation, export to glTF / GLB / OBJ / FBX).
 
 | | | |
 |---|---|---|
-| ![Start](docs/screenshots/m5-start.png) | ![UV](docs/screenshots/m5-uv.png) | ![Animate](docs/screenshots/m5-animate.png) |
-| Start screen presets | UV editor | Animate bar + timeline |
+| ![Reference](docs/screenshots/ref-traced.png) | ![UV](docs/screenshots/m5-uv.png) | ![Animate](docs/screenshots/m5-animate.png) |
+| Reference image (blueprint) | UV editor | Animate bar + timeline |
 | ![Pencil](docs/screenshots/m7.png) | ![Menu](docs/screenshots/m6-ipad-menu.png) | ![iPhone](docs/screenshots/m6-iphone.png) |
 | Painting with the brush bar | Touch menus | iPhone (compact layout) |
 | ![Quick Export](docs/screenshots/m5-quick-export.png) | ![Keypad](docs/screenshots/m6-iphone-keypad.png) | ![Files](docs/screenshots/m4.png) |

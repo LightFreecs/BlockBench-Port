@@ -128,21 +128,22 @@ function check(name, ok, info) {
 		await page.waitForFunction(() => window.BBTouch && BBTouch.ready && BBTouch.generic && BBTouch.meshTools && BBTouch.quickExport && BBTouch.files, null, { timeout: 30000 });
 		await sleep(1600);
 
-		// ---- 1. start screen quick start --------------------------------------------------------
-		const card = await rect('#bbt_generic_start');
-		check('start screen: "New Generic Model" card on top and visible', card && card.top >= 0 && card.top < 300 && card.h > 100, card);
-		check('File menu + floating toolbar entries', await ev(() => MenuBar.menus.file.structure.includes(BarItems.bbtouch_new_generic)
-			&& MenuBar.menus.file.structure.includes(BarItems.bbtouch_quick_export) && !!document.querySelector('#bbt_toolbar [data-id="new_generic"]')));
+		// ---- 1. new Generic Model via Blockbench's own start screen entry -----------------------
+		check('no duplicate quick-start (start card / File menu item / toolbar button removed)', await ev(() =>
+			!document.querySelector('#bbt_generic_start') && !BarItems.bbtouch_new_generic && !document.querySelector('#bbt_toolbar [data-id="new_generic"]')
+			&& MenuBar.menus.file.structure.includes(BarItems.bbtouch_quick_export) && !!document.querySelector('#bbt_toolbar [data-id="quick_export"]')));
+		check('upstream "Generic Model" entry on the start screen', !!(await rect('.format_entry[format="free"]')));
 		await shot('start');
-		await tapSel('#bbt_generic_start .bbt_start_more');
-		check('Options… opens New Generic Model dialog', await waitDialog('bbtouch_new_generic'));
-		await shot('new-dialog');
-		await tapSel('.bbt_size_btn[data-size="128"]');
-		await tapSel('.bbt_preset_tile[data-preset="blank"]');
+		const tapInView = async sel => { await ev(sel => document.querySelector(sel).scrollIntoView({ block: 'center' }), sel); await sleep(250); return tapSel(sel); };
+		await tapInView('.format_entry[format="free"]');
 		await sleep(400);
-		const proj = await ev(() => ({ format: Format.id, tw: Project.texture_width, th: Project.texture_height, box_uv: Project.box_uv, mode: Modes.selected.id, els: Outliner.elements.length, bar: BBTouch.meshTools.visible }));
-		check('blank Generic Model created (128px, box UV off, Edit mode, Mesh Tools bar)', proj.format === 'free' && proj.tw === 128 && proj.th === 128 && proj.box_uv === false && proj.mode === 'edit' && proj.els === 0 && proj.bar, proj);
-		check('texture size remembered', await ev(() => JSON.parse(localStorage.getItem('bbtouch.generic_new')).texture_size === 128));
+		await tapInView('#create_new_model_button');
+		check('Create opens the upstream Project settings dialog', await waitDialog('project'));
+		await shot('new-dialog');
+		await ev(() => Dialog.open.confirm());
+		await sleep(400);
+		const proj = await ev(() => ({ format: Format.id, mode: Modes.selected.id, els: Outliner.elements.length, bar: BBTouch.meshTools.visible }));
+		check('Generic Model created (Edit mode, Mesh Tools bar)', proj.format === 'free' && proj.mode === 'edit' && proj.els === 0 && proj.bar, proj);
 
 		// ---- 2. modeling --------------------------------------------------------------------------
 		await ev(() => BBTouch.meshTools.setCategory('add'));

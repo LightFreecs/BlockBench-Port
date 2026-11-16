@@ -52,8 +52,8 @@ function check(name, ok, info) {
 		await page.waitForFunction(() => window.BBTouch && BBTouch.ready && BBTouch.generic && BBTouch.quickExport && BBTouch.files, null, { timeout: 30000 });
 		await sleep(2500); // let boot-time requests (news, plugins, stats, telemetry) settle
 
-		let st = await ev(() => ({ native: BBTouch.files.cap.isNative(), card: !!document.querySelector('#bbt_generic_start'), net: !!BBTouch.net, blocked: BBTouch.net.blocked.slice(), startup: Blockbench.startup_count }));
-		check('boots offline (native mock, touch layer, Generic Model start card)', st.native && st.card && st.net, st);
+		let st = await ev(() => ({ native: BBTouch.files.cap.isNative(), card: !!document.querySelector('.format_entry[format="free"]'), net: !!BBTouch.net, blocked: BBTouch.net.blocked.slice(), startup: Blockbench.startup_count }));
+		check('boots offline (native mock, touch layer, Generic Model start entry)', st.native && st.card && st.net, st);
 		check('telemetry blocked before the network (new_installation event, plugin stats)', st.blocked.some(u => /blckbn\.ch\/api\/event\/new_installation/.test(u)) && st.blocked.some(u => /blckbn\.ch\/api\/stats/.test(u)), st.blocked);
 		check('remote start-screen news → bundled content/news.json', (await ev(() => BBTouch.net.redirected)).some(u => /web\.blockbench\.net\/content\/news\.json/.test(u)));
 		check('no blocked URL reached the network', !remote.some(r => /blckbn\.ch\/api\/(event|stats)|web\.blockbench\.net\/content\/news|api\.github\.com\/repos\/JannisX11\/blockbench\/releases/.test(r)), remote);

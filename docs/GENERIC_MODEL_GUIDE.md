@@ -19,17 +19,30 @@ A start-to-finish walkthrough with touch gestures: model → UV/texture → anim
 
 ![Start screen](screenshots/m5-start.png)
 
-The start screen opens with **New Generic Model**. Tap one of these presets:
+On the start screen, tap **Generic Model** (Blockbench's own entry, under *General*), then **Create New Model**, and
+confirm the *Project settings* (name, texture size). **File › New › Generic Model** does the same.
 
-- **Blank** – empty scene
-- **Cube**, **Sphere**, **Cylinder**, **Ico Sphere** – one low-poly mesh
-- **Humanoid** – six box meshes (body, head, arms, legs), each in its own bone, so it is ready to animate
+The Mesh Tools bar appears at the bottom. **Add › Humanoid** drops in a ready-to-animate base: six box meshes (body,
+head, arms, legs), each in its own bone.
 
-**Options…** lets you set the name and the texture/UV size (16–1024 px). The app remembers your choice.
+## 1b. Trace a character sheet (reference images)
 
-![New Generic Model dialog](screenshots/m5-new-dialog.png)
+![Reference image behind the model](screenshots/ref-traced.png)
 
-You can also start a new model from **File › New Generic Model…** or the ➕ button in the floating toolbar.
+Like Blender's background images: put a drawing behind the model and model on top of it.
+
+1. Mesh Tools › **Ref** (Reference) › **+ Front**, **+ Right**, **+ Back**, **+ Left** or **+ Top**.
+   The view switches to that side (orthographic) and the picker opens: choose Photo Library, Take Photo or Files.
+2. The image is placed behind the model at 60 % opacity and is in edit mode:
+   **drag** to move it, **pinch** (or the corner handles) to resize it so it lines up with the grid/model.
+3. Tap **Done**. The image now sits behind the model and ignores touches, so orbit/pan/zoom work as usual. It only
+   shows in the view it belongs to and follows that view's zoom, so it stays lined up.
+4. Switch with **Front View / Side View / Top View / 3D View**. Add a side image too, then block out the shape in
+   front and side views (Add › Cube, then Move/Scale, extrude in Face mode, Mirror modeling for symmetric characters).
+5. **Opacity** fades the image, **Show/Hide** toggles all of them, **Edit → select → Delete** removes one.
+
+"Front" is the side the model faces (Generic Model: −Z, same as the default camera). Reference images are saved in the
+.bbmodel; they are never exported to GLB/OBJ/FBX.
 
 ## 2. Model
 
@@ -37,14 +50,15 @@ You can also start a new model from **File › New Generic Model…** or the ➕
 
 The **Mesh Tools bar** at the bottom of the viewport has two rows:
 
-- **Row 1:** select mode **Object / Face / Edge / Vertex**, the **Orbit ⇄ Box Select** drag toggle, and the categories **Add / Mesh / Move / UV/Tex**.
+- **Row 1:** select mode **Object / Face / Edge / Vertex**, the **Orbit ⇄ Box Select** drag toggle, and the categories **Add / Mesh / Move / Ref / UV/Tex**.
 - **Row 2:** large buttons for the chosen category. Swipe the row sideways to see more buttons.
 - **Collapse:** the ⌄ button hides the bar.
 
 Categories:
 
-- **Add:** Block (a cube element), Mesh… (all 13 primitives), Cube, Cylinder, Sphere, Ico Sphere, Plane, Bone (wraps the selection in a group), Group, Locator, To Mesh. After you add a primitive, change its size or number of sides in the panel that appears above the bar.
+- **Add:** Block (a cube element), Mesh… (all 13 primitives), Cube, Cylinder, Sphere, Ico Sphere, Plane, Humanoid (rigged base), Bone (wraps the selection in a group), Group, Locator, To Mesh. After you add a primitive, change its size or number of sides in the panel that appears above the bar.
 - **Mesh:** Extrude, Inset, **Subdivide**, Loop Cut, Knife, Merge, Split, Join, Fill Face, Flip Normals, Dissolve, Solidify, Crease. Greyed-out buttons need a selection first; tapping one tells you what to select.
+- **Ref:** reference images / blueprints, see 1b.
 - **Move:** Move/Rotate/Scale/Pivot tools, **Move by…** (type an exact X/Y/Z offset on the keypad), Mirror modeling, Soft selection, Vertex snap, Grid, Origin→Geometry, Flip, Apply rotation.
 
 Typical loop:
@@ -75,7 +89,7 @@ For exact numbers, tap any value in the right panel to get the keypad, or drag s
 
 ![Animate](screenshots/m5-animate.png)
 
-Animation targets bones, i.e. groups. Select the mesh, then use **Add › Bone**; the Humanoid preset already has bones. Next, tap the **Animate** tab (top right). The bar then switches to playback controls.
+Animation targets bones, i.e. groups. Select the mesh, then use **Add › Bone**; Add › Humanoid already has bones. Next, tap the **Animate** tab (top right). The bar then switches to playback controls.
 
 1. Tap **Animation** to create one.
 2. Select the bone, move the playhead, and tap **Keyframe** to key its pose. Rotate the bone with the gizmo, then key again at another time.
@@ -106,7 +120,7 @@ Files go to **Files › On My iPad › Blockbench Touch › Exports**. The summa
 
 **Scale and axes**
 
-- Blockbench measures in pixels, and 16 px = 1 block. Keep **Scale = 16** so that one block is 1 m in the engine. The humanoid preset is then 2 m tall.
+- Blockbench measures in pixels, and 16 px = 1 block. Keep **Scale = 16** so that one block is 1 m in the engine. The Humanoid base is then 2 m tall.
 - glTF is Y-up and right-handed, which matches Blockbench, so the model needs no rotation.
 - Godot and Three.js import glTF exactly as it is.
 - Unity converts glTF to its left-handed space automatically. For FBX, tick *Bake Axis Conversion* if the model comes in rotated.

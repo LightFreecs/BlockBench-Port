@@ -126,7 +126,6 @@ body.is_mobile #bbt_meshbar .bbt_mb_cat { min-width: 42px; height: 40px; }
 .bbt_prim_tile.last_used { border-color: var(--color-accent); }
 .bbt_hint { color: var(--color-subtle_text); font-size: 13px; margin: 6px 2px 0; }
 .bbt_field_label { display: block; margin: 8px 2px 4px; color: var(--color-subtle_text); font-size: 13px; }
-.bbt_new_generic .bbt_name_input { width: 100%; height: 40px; font-size: 16px; padding: 0 10px; box-sizing: border-box; }
 .bbt_size_row { display: flex; flex-wrap: wrap; gap: 6px; }
 .bbt_size_btn {
 	min-width: 58px; height: 40px; padding: 0 10px;
@@ -146,42 +145,17 @@ body.is_mobile #bbt_meshbar .bbt_mb_cat { min-width: 42px; height: 40px; }
 .bbt_fmt_tile b { font-size: 17px; }
 .bbt_fmt_tile small { font-size: 11px; color: var(--color-subtle_text); line-height: 1.25; }
 
-/* ---------- start screen card ---------- */
-#bbt_generic_start { padding: 0; overflow: hidden; }
-#start_screen > content { overflow-anchor: none; }
-#bbt_generic_start .bbt_start_inner { padding: 18px 22px 20px; width: 100%; box-sizing: border-box; }
-#bbt_generic_start .bbt_start_head { display: flex; align-items: center; gap: 16px; }
-#bbt_generic_start .bbt_start_head h2 { margin: 0; font-size: 26px; font-weight: 400; }
-#bbt_generic_start .bbt_start_head p { margin: 4px 0 0; color: var(--color-subtle_text); }
-#bbt_generic_start .bbt_start_icon { font-size: 44px; color: var(--color-accent); flex: 0 0 auto; }
-#bbt_generic_start .bbt_start_more {
-	margin-left: auto; flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
-	height: 44px; padding: 0 14px; border-radius: 22px;
-}
-#bbt_generic_start .bbt_start_tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin-top: 16px; }
-#bbt_generic_start .bbt_start_tile {
-	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-	height: 96px; border-radius: 12px;
-	border: 1px solid var(--color-border);
-	background-color: var(--color-button); color: var(--color-text);
-	font-size: 15px; cursor: pointer;
-}
-#bbt_generic_start .bbt_start_tile:first-child { background-color: var(--color-accent); color: var(--color-accent_text); border-color: var(--color-accent); }
-#bbt_generic_start .bbt_start_tile > i { font-size: 36px; }
-#bbt_generic_start .bbt_start_tile:active { filter: brightness(1.2); }
-body.is_mobile #bbt_generic_start .bbt_start_inner { padding: 12px; }
-body.is_mobile #bbt_generic_start .bbt_start_head p { display: none; }
-body.is_mobile #bbt_generic_start .bbt_start_tile { height: 72px; font-size: 13px; }
-
 /* ---------- bigger Edit / Paint / Animate mode tabs ---------- */
 html.bb-touch-mode #mode_selector > li { min-height: 36px; padding-left: 10px; padding-right: 12px; font-size: 16px; }
 html.bb-touch-mode #mode_selector > li > i { font-size: 20px; }
-#bbt_generic_start .bbt_start_icon { align-self: center; line-height: 48px; width: 52px; height: 48px; text-align: center; }
-.bbt_fmt_tile, .bbt_prim_tile, .bbt_size_btn, .bbt_start_tile { text-decoration: none !important; outline: none; }
+.bbt_fmt_tile, .bbt_prim_tile, .bbt_size_btn { text-decoration: none !important; outline: none; }
 .bbt_fmt_tile *, .bbt_prim_tile * { text-decoration: none !important; }
 /* iPhone: keep the viewport usable */
 body.is_mobile #bbt_meshbar .bbt_mb_btn { height: 40px; min-width: 44px; padding: 1px 4px; }
 body.is_mobile #bbt_meshbar .bbt_mb_btn > i, body.is_mobile #bbt_meshbar .bbt_mb_btn > .icon { font-size: 19px; height: 20px; line-height: 20px; }
 body.is_mobile #bbt_meshbar .bbt_mb_segbtn { height: 38px; }
 body.is_mobile #bbt_meshbar .bbt_mb_cat { height: 38px; }
-body.is_mobile #bbt_generic_start .bbt_start_head { padding-left: 56px; }
+
+/* Reference images (touch/reference.js): while editing, upstream's per-image toolbar can sit under
+   the Mesh Tools bar and steal its taps (Done / Opacity / Delete). Keep the bar on top. */
+.reference_image_mode #bbt_meshbar { z-index: 13; }

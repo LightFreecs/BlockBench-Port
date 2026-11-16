@@ -282,6 +282,8 @@
 		G.last_input_touch = true;
 		if (!active()) return;
 		if (e.pointerType === 'pen') return; // M7: Pencil = precise pointer (touch/pencil.js), never a gesture finger
+		// Editing a reference image: fingers move/pinch-resize the image (touch/reference.js), not the camera
+		if (BBTouch.reference && BBTouch.reference.editing() && BBTouch.reference.selected()) return;
 		const p = findPreview(e.target);
 		if (!p) return;
 		patchControls(p);
