@@ -18,7 +18,7 @@ _None._ All customization lives outside the subtree:
 
 - `scripts/build-web.mjs` copies upstream build output into `www/` and post-processes
   `www/index.html` only (the copy, never the upstream file):
-  - injects `<link href="touch/touch.css">` and `<script>` tags for `touch/touch.js`, `pencil.js` (M7), `modifiers.js`, `gestures.js`,
+  - injects `<script src="touch/net.js">` first (M8, privacy/offline guard), then `<link href="touch/touch.css">` and `<script>` tags for `touch/touch.js`, `pencil.js` (M7), `modifiers.js`, `gestures.js`,
     `toolbar.js`, `files.js`, `longpress.js`, `inputs.js`, `ui.js`, `mesh-tools.js`, `generic.js`, `export.js` (in that order) before `</head>`, preceded by
     `touch/vendor/capacitor.js` (copied from `node_modules/@capacitor/core/dist/capacitor.js`) and followed by
     `<link href="touch/files.css">`, `<link href="touch/ui.css">`, `<link href="touch/generic.css">` (M5) and `<link href="touch/pencil.css">` (M7)
@@ -55,3 +55,8 @@ Re-check these after an upstream update:
 | calls `Painter.movePaintToolCanvas(ev)` / `UVEditor.movePaintTool(ev)` with coalesced events; `Painter.stopPaintToolCanvas`, `UVEditor.stopBrush`, `Undo.cancelEdit(true)`, `Painter.brushChanges`, `Painter.paint_stroke_canceled`, `Undo.current_save` | `touch/pencil.js` | M7: coalesced strokes, stroke → navigation |
 | `UVEditor.vue.$refs.viewport` scroll, `UVEditor.setZoom`, `vue.getFrameMargin/updateTextureCanvas/mouse_coords`, `UVEditor.updateUVNavigator` | `touch/pencil.js` | M7: UV finger pan/pinch while painting |
 | `ColorPanel.get/set/palette/panel.vue._data.history`, `Panels.color`, `Tool.select()`, `settings.paint_with_stylus_only` | `touch/pencil.js` | M7: brush bar / colour popover |
+| `XMLHttpRequest.prototype.open/send`, `window.fetch`, `navigator.sendBeacon`, `navigator.serviceWorker.register` wrapped before the bundle loads: `blckbn.ch/api/event|stats/*` and `api.github.com/repos/JannisX11/blockbench/releases` blocked (XHR fails with an `error` event, fetch → empty 503), `web.blockbench.net/content/news.json` redirected to the bundled `./content/news.json` (upstream `Promise.all([news_call, …])` has no `.catch`), boot-time theme update `fetch` (`cdn.jsdelivr.net/gh/JannisX11/blockbench-themes/`) turned into an empty 503 when offline, service worker never registered. Re-check the URLs in `js/boot_loader.js`, `js/interface/start_screen.ts`, `js/interface/about.ts`, `js/plugin_loader.ts`, `js/interface/themes.ts` | `touch/net.js` | M8: privacy / offline |
+| window capture `touchstart`/`mousedown` on `#menu_bar .menu_bar_point.opened` stop propagation (keeps upstream `unselectInterface` from closing the menu when `:hover` lags; the label's own `click` then toggles it) | `touch/ui.js` | M8: flaky tap-to-close menu |
+| `#outliner_drag_helper` is hidden (not removed) when the long-press menu opens; moving on > 18 px hides `Menu.open` and lets upstream's armed outliner/collection drag continue | `touch/longpress.js` | M8: hold, then drag |
+| `Blockbench.showQuickMessage` replaced by a no-op while the export `callback` (`codec.afterDownload/afterSave`) runs | `touch/files.js` | M8: no duplicate "Saved as" message |
+
