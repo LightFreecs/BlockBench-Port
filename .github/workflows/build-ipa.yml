@@ -4,6 +4,11 @@ on:
   push:
     branches: ['main', 'claude/**']
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Also publish the IPA as a GitHub Release (tag v<version>-<run number>)'
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -24,7 +29,7 @@ jobs:
             package-lock.json
             blockbench/package-lock.json
       - name: Cache blockbench/node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: blockbench/node_modules
           key: bb-nm-${{ runner.os }}-node22-${{ hashFiles('blockbench/package-lock.json') }}
@@ -36,8 +41,9 @@ jobs:
           npx playwright install --with-deps chromium
       - run: node scripts/smoke-test.cjs --screenshot test-results/ci.png
       - run: node scripts/test-files.cjs --screenshot test-results/files.png
-      - run: node scripts/test-generic.cjs
-      - uses: actions/upload-artifact@v4
+      - name: Full test suite (smoke, touch, files, ui, generic, pencil, offline)
+        run: npm test
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: web-smoke-screenshot
@@ -49,14 +55,16 @@ jobs:
     name: Unsigned IPA (macOS)
     runs-on: macos-15
     timeout-minutes: 60
+    permissions:
+      contents: write # only used by the optional release step
     steps:
-      - uses: actions/checkout@v4
-      - name: Select Xcode 16+
+      - uses: actions/checkout@v7
+      - name: Select Xcode (pinned; 26.3 = the version M2–M7 were built with)
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '26.3'
       - run: xcodebuild -version
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -64,12 +72,12 @@ jobs:
             package-lock.json
             blockbench/package-lock.json
       - name: Cache blockbench/node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: blockbench/node_modules
           key: bb-nm-${{ runner.os }}-node22-${{ hashFiles('blockbench/package-lock.json') }}
       - name: Cache SwiftPM packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             build/SourcePackages
@@ -95,6 +103,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             build > build/xcodebuild.log 2>&1 || status=$?
           grep -E "error:|BUILD (SUCCEEDED|FAILED)" build/xcodebuild.log || true
           if [ $status -ne 0 ]; then tail -n 150 build/xcodebuild.log; exit $status; fi
@@ -107,16 +116,31 @@ jobs:
           test -f Payload/App.app/public/index.html
           zip -qry BlockbenchTouch.ipa Payload
           ls -lh BlockbenchTouch.ipa
-          echo "### IPA built: $(du -h BlockbenchTouch.ipa | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Payload/App.app/Info.plist)
+          build=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' Payload/App.app/Info.plist)
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "### IPA built: Blockbench Touch $version ($build), $(du -h BlockbenchTouch.ipa | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
         with:
           name: BlockbenchTouch-ipa
           path: BlockbenchTouch.ipa
           retention-days: 30
           compression-level: 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: xcodebuild-log
           path: build/xcodebuild.log
           if-no-files-found: ignore
+      - name: Publish GitHub Release (manual runs with release=true)
+        if: github.event_name == 'workflow_dispatch' && inputs.release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ env.APP_VERSION }}-${{ github.run_number }}
+          name: Blockbench Touch ${{ env.APP_VERSION }} (build ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body: |
+            Unsigned IPA for sideloading (AltStore / Sideloadly / TrollStore) — see the README.
+            Built from ${{ github.sha }} by run ${{ github.run_id }}.
+          files: BlockbenchTouch.ipa
