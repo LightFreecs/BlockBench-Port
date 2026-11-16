@@ -3,7 +3,7 @@
 | # | Milestone | Status |
 |---|-----------|--------|
 | 1 | Scaffold | done |
-| 2 | IPA CI workflow | pending |
+| 2 | IPA CI workflow | done |
 | 3 | Touch viewport + modifier toolbar | pending |
 | 4 | Files app integration | pending |
 | 5 | Generic Model workflow (main feature) | pending |
@@ -12,6 +12,32 @@
 | 8 | Polish + README | pending |
 
 ## Log
+
+### M2 — IPA CI workflow (done)
+
+**Workflow** `.github/workflows/build-ipa.yml` ("Build IPA"); triggers: push to `main` / `claude/**`, manual `workflow_dispatch`.
+Concurrency cancels superseded runs on the same ref.
+- Job `web` (ubuntu-latest, ~1 min): Node 22 → `npm ci` → `npm run build` → installs `playwright@1.63.0` with `--no-save`
+  (it is not in package.json, so the global Playwright in dev containers keeps working) + `npx playwright install --with-deps chromium`
+  → smoke test with screenshot → artifact `web-smoke-screenshot` (7 days).
+- Job `ipa` (macos-15, ~3 min): `maxim-lobanov/setup-xcode` latest-stable (it resolved to **Xcode 26.3**) → Node 22 → `npm ci` → `npm run sync` →
+  `xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -sdk iphoneos -destination generic/platform=iOS
+  -derivedDataPath build -clonedSourcePackagesDirPath build/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""`
+  (the full log goes to `build/xcodebuild.log`; only errors are shown, plus the last 150 lines if the build fails; the log is uploaded as `xcodebuild-log` on failure)
+  → `Payload/App.app` → `BlockbenchTouch.ipa` (the step checks that `public/index.html` is inside) → artifact **`BlockbenchTouch-ipa`** (30 days, stored uncompressed).
+- Caches: npm (setup-node, both lockfiles), `blockbench/node_modules` (keyed on its lockfile + OS), SPM (`build/SourcePackages` + `~/Library/Caches/org.swift.swiftpm`).
+- The Xcode project needed no changes: the Capacitor template has no script phases (so user-script sandboxing doesn't matter), uses automatic signing with no team, bundle id
+  `com.lightfreecs.blockbenchtouch`, and iOS 15. It has no shared scheme, but xcodebuild auto-creates the `App` scheme.
+
+**Result**: first run passed. https://github.com/LightFreecs/BlockBench-Port/actions/runs/43827374819 (IPA 6.1 MB, artifact id 14207038077).
+
+**Downloading the IPA**: GitHub → Actions → "Build IPA" → latest green run → Artifacts → `BlockbenchTouch-ipa` (a zip that contains `BlockbenchTouch.ipa`).
+Unzip it, then sideload with AltStore / Sideloadly / TrollStore; these re-sign the app with your Apple ID. Needs a GitHub login.
+
+**Known issues**
+- Runner warning: the v4 actions (checkout/setup-node/cache/upload-artifact) target Node 20 and are forced to run on Node 24. Harmless; bump the major versions later.
+- `latest-stable` Xcode can change under us. If a future Xcode breaks the build, pin `xcode-version` (e.g. `'26.3'`).
+- The app has not been run on a device yet; a launch check comes with M3/M4 testing.
 
 ### M1 — Scaffold (done)
 
