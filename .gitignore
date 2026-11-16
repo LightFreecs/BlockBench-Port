@@ -26,3 +26,4 @@ xcuserdata/
 
 # test output scratch
 /test-results/
+dist-ipa/
