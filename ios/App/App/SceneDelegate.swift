@@ -8,7 +8,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = BBBridgeViewController()
         window?.makeKeyAndVisible()
 
         // Cold start via "Open in Blockbench Touch": copy before Capacitor delivers the URL.
@@ -68,5 +68,33 @@ enum BBTouchInbox {
             NSLog("[BBTouch] file coordination failed for \(url.lastPathComponent): \(coordError)")
         }
         return copied ? dest : nil
+    }
+}
+
+/// M7: Apple Pencil double-tap (Pencil 2 / Pro) → JS window event `bbtouchPencilTap`
+/// (handled by touch/pencil.js: eraser toggle / previous tool / colour popover).
+class BBBridgeViewController: CAPBridgeViewController, UIPencilInteractionDelegate {
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        let interaction = UIPencilInteraction()
+        interaction.delegate = self
+        view.addInteraction(interaction)
+    }
+
+    private func sendPencilTap() {
+        let action: String
+        switch UIPencilInteraction.preferredTapAction {
+        case .switchEraser: action = "switchEraser"
+        case .switchPrevious: action = "switchPrevious"
+        case .showColorPalette: action = "showColorPalette"
+        case .ignore: action = "ignore"
+        default: action = "other"
+        }
+        bridge?.triggerWindowJSEvent(eventName: "bbtouchPencilTap", data: "{\"action\":\"\(action)\"}")
+    }
+
+    // iOS 12.1 – 17.4 (still called on later versions when the new method is not implemented)
+    func pencilInteractionDidTap(_ interaction: UIPencilInteraction) {
+        sendPencilTap()
     }
 }

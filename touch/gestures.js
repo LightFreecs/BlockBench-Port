@@ -16,7 +16,10 @@
  *  3 finger tap                  → redo
  *
  * Paint tools / knife / weight brush keep upstream 1-finger behaviour (draw);
- * 2-finger navigation still works there.
+ * 2-finger navigation still works there. M7: once "Pencil only draws" is active
+ * (touch/pencil.js) fingers navigate with paint tools too and taps don't paint.
+ * Apple Pencil (pointerType 'pen') never takes part in finger gestures: it reaches
+ * upstream directly as a precise pointer (paint / select / gizmo).
  *
  * Implementation: window capture-phase pointer listeners run before any upstream
  * canvas listener. OrbitControls' own touch handlers are switched off per
@@ -65,8 +68,10 @@
 		};
 	}
 
+	function pencil() { return BBTouch.pencil; }
 	function passthroughTool(e) {
 		const tool = window.Toolbox && Toolbox.selected;
+		if (pencil() && pencil().fingerPaintBlocked()) return false; // M7: fingers navigate, Pencil paints
 		if (window.Modes && Modes.paint) return true;
 		if (!tool) return false;
 		if (tool.paintTool || tool.brush) return true;
@@ -196,6 +201,7 @@
 	function replayTap(p, e, long) {
 		G.stats.taps++;
 		p.controls.hasMoved = false;
+		if (pencil() && pencil().suppressFingerClick()) { G.stats.suppressed_taps = (G.stats.suppressed_taps || 0) + 1; return; }
 		p.click(e);
 		if (long && p.rclick_cooldown !== undefined) {
 			// upstream opens the context menu on touchend if the press lasted ≥420ms
@@ -235,7 +241,7 @@
 		G.stats.taps++;
 		G.stats.hold_menus = (G.stats.hold_menus || 0) + 1;
 		p.controls.hasMoved = false;
-		p.click(e);
+		if (!(pencil() && pencil().suppressFingerClick())) p.click(e);
 		clearTimeout(p.rclick_cooldown);
 		p.rclick_cooldown = true;
 		p.static_rclick = true;
@@ -275,6 +281,7 @@
 		}
 		G.last_input_touch = true;
 		if (!active()) return;
+		if (e.pointerType === 'pen') return; // M7: Pencil = precise pointer (touch/pencil.js), never a gesture finger
 		const p = findPreview(e.target);
 		if (!p) return;
 		patchControls(p);
@@ -375,6 +382,15 @@
 			reset();
 		}
 	}
+	/** M7: drop the current gesture (touch/pencil.js calls this when a Pencil lands: it was a palm). */
+	G.cancel = function () {
+		if (!G.pointers.size) return;
+		const p = preview;
+		G.pointers.clear();
+		if (p) p.controls.hasMoved = true;
+		reset();
+	};
+
 	window.addEventListener('pointerup', onPointerEnd, { capture: true, passive: false });
 	window.addEventListener('pointercancel', onPointerEnd, { capture: true, passive: false });
 

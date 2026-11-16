@@ -20,6 +20,7 @@
 		{ id: 'focus', icon: 'center_focus_weak', title: 'Focus on selection (none selected: frame all)', run: focus },
 		{ id: 'duplicate', icon: 'content_copy', title: 'Duplicate', action: 'duplicate' },
 		{ id: 'delete', icon: 'delete', title: 'Delete', action: 'delete' },
+		{ id: 'pencil', icon: 'edit', title: 'Apple Pencil & brush settings', run: () => BBTouch.pencil && BBTouch.pencil.openSettings(el.querySelector('[data-id="pencil"]')) },
 		{ id: 'quick_actions', icon: 'bolt', title: 'Quick Actions (search every action)', run: () => BBTouch.ui && BBTouch.ui.quickActions() },
 		{ sep: true },
 		{ id: 'touch_mode', icon: 'touch_app', title: 'Touch mode (gestures, big gizmo)', run: () => BBTouch.setEnabled(!BBTouch.enabled) },

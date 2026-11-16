@@ -8,10 +8,68 @@
 | 4 | Files app integration | done |
 | 5 | Generic Model workflow (main feature) | pending |
 | 6 | UI touch improvements | done |
-| 7 | Apple Pencil | pending |
+| 7 | Apple Pencil | done |
 | 8 | Polish + README | pending |
 
 ## Log
+
+### M7 — Apple Pencil + painting (done)
+
+**Features** (`touch/pencil.js`, `touch/pencil.css`; small hooks in `gestures.js`, `longpress.js`, `toolbar.js`; native double-tap in `ios/App/App/SceneDelegate.swift`)
+- **Pencil = precise pointer.** `pointerType 'pen'` never enters finger-gesture logic (gestures.js ignores it, OrbitControls
+  stays off for it): with a paint tool it paints immediately (3D viewport and 2D UV/texture editor), otherwise it is a
+  mouse-like click/drag (select, gizmo — the gizmo hover is computed on pen-down since most iPads have no hover).
+- **Pressure → size / opacity** with a curve (Soft / Linear / Firm), min size %, min opacity %, optional **tilt → size**.
+  The brush-size slider is the size at full pressure. Implemented by wrapping `Painter.useBrush` (temporarily overrides
+  `slider_brush_size/opacity.get` and disables upstream's own pressure modifiers, which cap the size at 20 px).
+- **Coalesced events:** intermediate `getCoalescedEvents()` samples of the stroke pointer are fed to
+  `Painter.movePaintToolCanvas` / `UVEditor.movePaintTool` → fast strokes follow the real 240 Hz pen path.
+- **Palm rejection:** touches on the viewport / UV editor are ignored while a pen is down and for 300 ms after it lifts;
+  touches with a contact diameter > 56 px (pointer `width/height`) are always ignored; a touch that started ≤ 600 ms
+  before the pen lands (palm first) is cancelled and its orbit/pan reverted; while a pen stroke runs no other pointer
+  reaches upstream's stroke handlers. Apple Pencil never triggers the M6 long-press menu.
+- **"Pencil only draws"** (Auto = switches on after the first Pencil use with a toast, On, Off; upstream's
+  `paint_with_stylus_only` also forces it): fingers never paint. 3D: 1-finger orbit, 2-finger pan/pinch, taps don't paint
+  dots, 2-/3-finger tap undo/redo. **UV editor (new):** 1-finger pan, 2-finger pan + pinch zoom (anchored, upstream wheel
+  maths), 2-/3-finger tap undo/redo.
+- **Finger painting** (no Pencil used yet, or mode Off): a finger paints; a second finger turns the stroke into navigation
+  and reverts it if it was younger than 450 ms (`Undo.cancelEdit(true)`), so a 2-finger tap is a clean undo of the
+  previous action instead of undoing a stray dot. Works in 3D and in the UV editor.
+- **Brush bar** (floating, bottom of the viewport, paint mode + paint tool + touch mode): brush, eraser toggle, fill,
+  eyedropper (one pick, then back to the previous tool), size + opacity sliders (one undo step), colour swatch → colour
+  popover (iOS system colour picker via `<input type=color>`, recent colours, palette, swap, eyedropper, "show Color panel"),
+  undo/redo, ✎ settings (green dot = Pencil-only active).
+- **Pencil settings popover** (✎ in the brush bar and in the floating toolbar): all options above + pressure test pad,
+  palm rejection toggle, double-tap action, haptics, brush bar toggle. Persisted in `bbtouch.pencil`.
+- **Haptics:** `@capacitor/haptics` added (Package.swift updated by `cap sync`). `BBTouch.haptic(style)` — tool switches
+  (selection), undo/redo from the bar (light), M6 long press now goes through it (medium); `navigator.vibrate` fallback.
+- **Apple Pencil double-tap (Pencil 2 / Pro):** `BBBridgeViewController` (subclass of `CAPBridgeViewController`, in
+  SceneDelegate.swift, no project-file changes) adds a `UIPencilInteraction` and sends window event `bbtouchPencilTap`
+  with the user's system preference (`switchEraser` / `switchPrevious` / `showColorPalette` / `ignore`). JS maps it
+  (setting "System") or uses a fixed action: eraser toggle, last tool, colour popover, off.
+
+**How to test**
+```
+npm run build:fast
+npm run test:pencil        # 42 checks, iPad 1180x820; pen = CDP Input.dispatchMouseEvent pointerType 'pen' + force
+node scripts/test-pencil.cjs --screenshot docs/screenshots/m7.png
+npm test                   # smoke + touch + files + ui + pencil
+```
+Covers: finger paints before Pencil use; pen paints; pressure → size (light vs firm, ramp inside one stroke), pressure →
+opacity; auto Pencil-only after first use; finger drag orbits / tap doesn't paint / 2-finger nav in paint mode; touch
+during pen stroke rejected (no paint, no camera move); touch right after pen lift ignored; large-radius palm ignored;
+palm-first orbit reverted when the pen lands; finger mode 2-finger tap = clean undo; coalesced samples painted
+(synthetic `coalescedEvents`); brush bar size/eraser/eyedropper/undo/colour popover; toolbar ✎ settings, persistence,
+test pad, outside-tap close; double-tap event toggles eraser; UV editor: pen paints, pinch zoom + 1-finger pan in
+Pencil-only, finger paints + 2-finger pinch without paint in finger mode; edit mode: pen tap selects without gestures.
+
+**Known issues / not verified**
+- Headless Chromium only; real Apple Pencil pressure range in WKWebView (`force / maximumPossibleForce`, normal writing
+  ≈ 0.2–0.4) → the default "Soft" curve; tune on device. Pointer `width/height` for palms in WKWebView should reflect the
+  touch radius — verify the 56 px threshold on device.
+- The double-tap Swift code compiles in CI but is untested on hardware. iOS 17.5+ squeeze (Pencil Pro) is not handled.
+- Pressure modifies size/opacity per dab; `draw_shape_tool`/`gradient_tool`/fill ignore pressure (upstream behaviour).
+- Palm rejection is limited to the 3D viewport and the UV editor; panels elsewhere get normal touch.
 
 ### M6 — Touch-friendly UI (done)
 

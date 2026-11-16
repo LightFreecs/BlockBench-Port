@@ -62,6 +62,8 @@
 	}
 
 	function haptic() {
+		// M7: shared helper (touch/pencil.js) – @capacitor/haptics, respects the haptics setting
+		if (BBTouch.haptic) { BBTouch.haptic('medium'); return; }
 		try {
 			const H = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Haptics;
 			if (H && H.impact) { H.impact({ style: 'MEDIUM' }); return; }
@@ -159,6 +161,8 @@
 		const target = e.target instanceof Element ? e.target : null;
 		cancel();
 		if (!target || isPreviewCanvas(target) || target.closest(EXCLUDE)) return;
+		// M7: Apple Pencil never long-presses; painting in the UV editor (hold still = paint / navigate)
+		if (t.touchType === 'stylus' || (BBTouch.pencil && BBTouch.pencil.blocksLongPress(target))) return;
 		if (tooltip_el && !tooltip_el.contains(target)) LP.hideTooltip();
 		st = { id: t.identifier, x: t.clientX, y: t.clientY, target, fired: false };
 		st.timer = setTimeout(fire, cfg.ui_long_press_ms);

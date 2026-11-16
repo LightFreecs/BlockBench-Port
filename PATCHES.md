@@ -18,10 +18,10 @@ _None._ All customization lives outside the subtree:
 
 - `scripts/build-web.mjs` copies upstream build output into `www/` and post-processes
   `www/index.html` only (the copy, never the upstream file):
-  - injects `<link href="touch/touch.css">` and `<script>` tags for `touch/touch.js`, `modifiers.js`, `gestures.js`,
+  - injects `<link href="touch/touch.css">` and `<script>` tags for `touch/touch.js`, `pencil.js` (M7), `modifiers.js`, `gestures.js`,
     `toolbar.js`, `files.js`, `longpress.js`, `inputs.js`, `ui.js` (in that order) before `</head>`, preceded by
     `touch/vendor/capacitor.js` (copied from `node_modules/@capacitor/core/dist/capacitor.js`) and followed by
-    `<link href="touch/files.css">` and `<link href="touch/ui.css">`
+    `<link href="touch/files.css">` and `<link href="touch/ui.css">`, `<link href="touch/pencil.css">`
   - replaces the viewport meta with `maximum-scale=1, user-scalable=no, viewport-fit=cover`
 
 ## Runtime hooks (no source edits, applied from `touch/*.js` after Blockbench boots)
@@ -43,3 +43,7 @@ Re-check these after an upstream update:
 | `.nslide` touch/compat-mouse events stopped in capture phase; uses `NumSlider.getInterval/change/update/onBefore/onAfter/stopInput/startInput`, `jq_inner`, `last_value`, `sliding`, `NumSlider.MolangParser` | `touch/inputs.js` | M6: touch scrub + keypad |
 | `MenuBar.update` wrapped (re-adds the "Actions" item), compat `mouseenter/mouseover` on `.menu_bar_point` / `ul.contextMenu li` blocked after touch, `Menu.open.hover(li, e, true)` on tap | `touch/ui.js` | M6: tap semantics for menus |
 | `Prop.show_left_bar/show_right_bar` + `updateInterface()`, `ActionControl.select()` | `touch/ui.js` | M6: sidebar edge toggles, Quick Actions |
+| `Painter.useBrush` wrapped (pen events: temporarily overrides `BarItems.slider_brush_size/slider_brush_opacity.get`, sets `settings.brush_size_modifier/brush_opacity_modifier.value = 'none'`, writes `Painter.current.dynamic_brush_size`) | `touch/pencil.js` | M7: pressure/tilt curve |
+| calls `Painter.movePaintToolCanvas(ev)` / `UVEditor.movePaintTool(ev)` with coalesced events; `Painter.stopPaintToolCanvas`, `UVEditor.stopBrush`, `Undo.cancelEdit(true)`, `Painter.brushChanges`, `Painter.paint_stroke_canceled`, `Undo.current_save` | `touch/pencil.js` | M7: coalesced strokes, stroke → navigation |
+| `UVEditor.vue.$refs.viewport` scroll, `UVEditor.setZoom`, `vue.getFrameMargin/updateTextureCanvas/mouse_coords`, `UVEditor.updateUVNavigator` | `touch/pencil.js` | M7: UV finger pan/pinch while painting |
+| `ColorPanel.get/set/palette/panel.vue._data.history`, `Panels.color`, `Tool.select()`, `settings.paint_with_stylus_only` | `touch/pencil.js` | M7: brush bar / colour popover |
