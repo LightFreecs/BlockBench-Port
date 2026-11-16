@@ -61,7 +61,8 @@ const indexPath = path.join(www, 'index.html');
 let html = fs.readFileSync(indexPath, 'utf8');
 const head = '\t<link rel="stylesheet" href="touch/touch.css" id="bb_touch_stylesheet">\n'
 	+ '\t<link rel="stylesheet" href="touch/files.css">\n'
-	+ '\t<link rel="stylesheet" href="touch/ui.css" id="bb_touch_ui_stylesheet">\n';
+	+ '\t<link rel="stylesheet" href="touch/ui.css" id="bb_touch_ui_stylesheet">\n'
+	+ '\t<link rel="stylesheet" href="touch/generic.css">\n'; // M5
 // Capacitor core runtime (window.Capacitor.registerPlugin etc.). The iOS native bridge only
 // injects the low-level bridge, plugins are reached through this. Harmless in a browser.
 const capJs = path.join(root, 'node_modules/@capacitor/core/dist/capacitor.js');
@@ -73,6 +74,8 @@ fs.copyFileSync(capJs, path.join(www, 'touch/vendor/capacitor.js'));
 // touch.js (core) must come first; the others register on window.BBTouch.
 // M6 (UI): longpress.js must come before inputs.js (shared touch listeners order).
 const touchScripts = ['touch.js', 'modifiers.js', 'gestures.js', 'toolbar.js', 'files.js', 'longpress.js', 'inputs.js', 'ui.js'];
+// M5 (Generic Model workflow): mesh-tools.js before generic.js (generic uses BBTouch.meshTools).
+touchScripts.push('mesh-tools.js', 'generic.js', 'export.js');
 for (const f of touchScripts) {
 	if (!fs.existsSync(path.join(root, 'touch', f))) throw new Error(`touch/${f} missing`);
 }

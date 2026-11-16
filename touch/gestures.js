@@ -29,7 +29,7 @@
 	const cfg = BBTouch.config;
 
 	const G = BBTouch.gestures = {
-		mode: 'idle',          // idle | pending | orbit | nav | gizmo | passthrough | tail
+		mode: 'idle',          // idle | pending | orbit | nav | gizmo | passthrough | tail | custom (M5 dragHook)
 		pointers: new Map(),   // pointerId → {x, y, sx, sy}
 		last_sequence_was_navigation: false,
 		last_input_touch: false,
@@ -306,7 +306,8 @@
 		// Additional fingers never reach upstream's click() (it would raycast/select).
 		if (G.mode === 'gizmo') return;
 		e.stopImmediatePropagation();
-		if (G.mode === 'pending' || G.mode === 'orbit' || G.mode === 'passthrough' || G.mode === 'nav') {
+		if (G.mode === 'custom' && typeof G.dragHookCancel === 'function') G.dragHookCancel(preview);
+		if (G.mode === 'pending' || G.mode === 'orbit' || G.mode === 'passthrough' || G.mode === 'nav' || G.mode === 'custom') {
 			G.mode = 'nav';
 			down_event = null;
 			nav_prev = navMetrics();
@@ -325,6 +326,15 @@
 
 		switch (G.mode) {
 			case 'pending':
+				// M5: an extension (touch/mesh-tools.js box select) may claim a 1-finger drag.
+				if (moved && typeof G.dragHook === 'function' && down_event && G.dragHook(preview, down_event, e)) {
+					G.mode = 'custom';
+					clearTimeout(hold_timer);
+					down_event = null;
+					last_tap = null;
+					G.last_sequence_was_navigation = false;
+					break;
+				}
 				if (moved) {
 					G.mode = 'orbit';
 					down_event = null;
