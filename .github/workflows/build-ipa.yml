@@ -1,0 +1,120 @@
+name: Build IPA
+
+on:
+  push:
+    branches: ['main', 'claude/**']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web build + smoke test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            blockbench/package-lock.json
+      - name: Cache blockbench/node_modules
+        uses: actions/cache@v4
+        with:
+          path: blockbench/node_modules
+          key: bb-nm-${{ runner.os }}-node22-${{ hashFiles('blockbench/package-lock.json') }}
+      - run: npm ci
+      - run: npm run build
+      - name: Install Playwright (not a project dependency; preinstalled in dev containers)
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - run: node scripts/smoke-test.cjs --screenshot test-results/ci.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-smoke-screenshot
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  ipa:
+    name: Unsigned IPA (macOS)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 16+
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: xcodebuild -version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            blockbench/package-lock.json
+      - name: Cache blockbench/node_modules
+        uses: actions/cache@v4
+        with:
+          path: blockbench/node_modules
+          key: bb-nm-${{ runner.os }}-node22-${{ hashFiles('blockbench/package-lock.json') }}
+      - name: Cache SwiftPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/CapApp-SPM/Package.swift', 'package-lock.json') }}
+          restore-keys: spm-${{ runner.os }}-
+      - run: npm ci
+      - name: Build web + cap sync ios
+        run: npm run sync
+      - name: xcodebuild (unsigned, Release, generic iOS)
+        run: |
+          mkdir -p build
+          status=0
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build > build/xcodebuild.log 2>&1 || status=$?
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" build/xcodebuild.log || true
+          if [ $status -ne 0 ]; then tail -n 150 build/xcodebuild.log; exit $status; fi
+          test -d build/Build/Products/Release-iphoneos/App.app
+      - name: Package IPA
+        run: |
+          rm -rf Payload BlockbenchTouch.ipa
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          test -f Payload/App.app/public/index.html
+          zip -qry BlockbenchTouch.ipa Payload
+          ls -lh BlockbenchTouch.ipa
+          echo "### IPA built: $(du -h BlockbenchTouch.ipa | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BlockbenchTouch-ipa
+          path: BlockbenchTouch.ipa
+          retention-days: 30
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-log
+          path: build/xcodebuild.log
+          if-no-files-found: ignore
