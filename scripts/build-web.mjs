@@ -62,7 +62,14 @@ let html = fs.readFileSync(indexPath, 'utf8');
 const head = '\t<link rel="stylesheet" href="touch/touch.css" id="bb_touch_stylesheet">\n';
 // Classic (non-module) script runs before the deferred module bundle, so the
 // touch layer can set up globals/hooks before Blockbench boots.
-const script = '\t<script src="touch/touch.js" id="bb_touch_script"></script>\n';
+// touch.js (core) must come first; the others register on window.BBTouch.
+const touchScripts = ['touch.js', 'modifiers.js', 'gestures.js', 'toolbar.js'];
+for (const f of touchScripts) {
+	if (!fs.existsSync(path.join(root, 'touch', f))) throw new Error(`touch/${f} missing`);
+}
+const script = touchScripts
+	.map((f, i) => `\t<script src="touch/${f}"${i === 0 ? ' id="bb_touch_script"' : ''}></script>\n`)
+	.join('');
 if (!html.includes('</head>')) throw new Error('index.html has no </head>');
 html = html.replace('</head>', head + script + '</head>');
 // Viewport: disable page zoom so pinch gestures go to the editor.

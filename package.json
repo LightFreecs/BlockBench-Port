@@ -10,7 +10,9 @@
 		"build:fast": "node scripts/build-web.mjs --skip-upstream",
 		"sync": "npm run build && npx cap sync ios",
 		"serve": "node scripts/serve.mjs",
-		"test:web": "node scripts/smoke-test.cjs"
+		"test:web": "node scripts/smoke-test.cjs",
+		"test:touch": "node scripts/test-touch.cjs",
+		"test": "node scripts/smoke-test.cjs && node scripts/test-touch.cjs"
 	},
 	"dependencies": {
 		"@capacitor/core": "^8.6.2",

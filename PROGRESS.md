@@ -4,7 +4,7 @@
 |---|-----------|--------|
 | 1 | Scaffold | done |
 | 2 | IPA CI workflow | pending |
-| 3 | Touch viewport + modifier toolbar | pending |
+| 3 | Touch viewport + modifier toolbar | done |
 | 4 | Files app integration | pending |
 | 5 | Generic Model workflow (main feature) | pending |
 | 6 | UI touch improvements | pending |
@@ -57,3 +57,60 @@ npm run sync           # build + npx cap sync ios (copies www/ into ios/App/App/
   (SPM resolves `capacitor-swift-pm` from GitHub — no CocoaPods needed) →
   `mkdir Payload && cp -r build/Build/Products/Release-iphoneos/App.app Payload/ && zip -r BlockbenchTouch.ipa Payload`.
 - Cache `~/.npm`, `blockbench/node_modules`, and SPM (`build/SourcePackages`).
+
+### M3 — Touch viewport + modifier toolbar (done)
+
+**Features** (all in `touch/`, no upstream edits)
+- `touch/touch.js` — core: `window.BBTouch` namespace, `BBTouch.store` (localStorage, try/catch), event bus, `BBTouch.onReady`
+  (polls until `Preview`, `Transformer`, `BarItems`, `Pressing`, `THREE` exist), touch-mode flag (`BBTouch.setEnabled`, persisted,
+  `html.bb-touch-mode`), tunables in `BBTouch.config`, suppresses iOS `gesturestart/change/end`.
+- `touch/gestures.js` — 3D viewport gestures via window **capture-phase** pointer listeners (run before upstream's canvas listeners):
+  - 1 finger drag = orbit (also when starting on an element — the touch-down no longer selects), drag on gizmo = upstream transform,
+    tap = upstream select (the held-back `pointerdown` is replayed into `preview.click()` on lift), long press (≥420 ms) = upstream
+    context menu on lift, double-tap element = `focus_on_selection` (zoom variant), double-tap empty = frame all elements
+    (`camera_initial` if empty), 2 fingers = pan + pinch-zoom simultaneously (zoom anchored at the pinch centre),
+    2-finger tap = undo, 3-finger tap = redo.
+  - Upstream OrbitControls touch handling is disabled per instance by wrapping `controls.isEnabled` while the last input was touch
+    (mouse unaffected). This also fixes an upstream bug where every touch-orbit ended in "unselect all" (OrbitControls reset
+    `hasMoved` before `preview.mouseup`).
+  - Paint tools / brushes / knife / weight brush keep upstream 1-finger behaviour; 2-finger navigation still works there.
+  - `touchstart`/`touchmove` on preview canvases are `preventDefault`ed; CSS `touch-action: none` on `.preview` and its canvas.
+  - Gizmo ×1.5 in touch mode (wraps `Transformer.getScale`); raycaster point/line thresholds ×1.5 extra (on `update_camera_position`).
+- `touch/modifiers.js` — sticky Shift/Ctrl(⌘)/Alt driving upstream's own `Pressing.overrides` (read by Keybind.isTriggered,
+  additionalModifierTriggered, snapping, selection, outliner, UV…), plus patches `shiftKey/ctrlKey/metaKey/altKey` onto
+  pointer/mouse/touch events (capture phase) for code that only reads the event. States off/once/lock; one-shot modifiers are
+  cleared ~80 ms after the next non-navigation pointer sequence outside the toolbar. Syncs with upstream's status-bar modifier menu.
+- `touch/toolbar.js` + `touch/touch.css` — floating toolbar: Shift, Ctrl/⌘, Alt, Undo, Redo, Focus (frame all if nothing selected),
+  Duplicate, Delete, touch-mode toggle; 46 px buttons, grip to drag, collapse button; position/collapsed state in localStorage
+  (`bbtouch.toolbar`); themed with Blockbench CSS variables (`--color-ui`, `--color-button`, `--color-accent`, …); z-index 19
+  (below menus/dialogs). Default position: top-left inside the 3D viewport. `BBTouch.toolbar.resetPosition()`.
+- `scripts/build-web.mjs` injects `touch.js, modifiers.js, gestures.js, toolbar.js` (in that order) + `touch.css`.
+
+Note on upstream semantics: in the viewport **Ctrl = multi-select (toggle)**, **Shift = group select** (for root-level elements it
+behaves like multi-select), **Alt = loop select** (mesh edges). In the outliner Shift = range select.
+
+**How to test**
+```
+npm run build          # or npm run build:fast after editing touch/*
+npm run test:touch     # 31 checks: orbit, pinch, pan, pinch+pan, tap select, double-tap focus/frame, modifiers, undo/redo
+                       # gestures + toolbar, duplicate/delete, gizmo size + gizmo drag, toolbar drag/collapse, touch-mode toggle
+npm test               # smoke + touch
+node scripts/test-touch.cjs --screenshot docs/screenshots/m3.png
+```
+Uses CDP `Input.dispatchTouchEvent` (real multi-touch → touch + pointer events) on an emulated iPad 1180x820.
+
+**Known issues / not verified**
+- Only tested in headless Chromium; WKWebView pointer-event ordering should match but needs a device check (esp. pencil = `pen`).
+- Long-press context menu still opens on finger lift (upstream behaviour); an iOS-style "open while holding" belongs to M6.
+- Zoom-to-pinch-centre assumes the target is near the focal plane; fine in practice.
+- Toolbar is ~600 px tall expanded — on iPhone landscape collapse it (or M6 could add a horizontal layout).
+- Selection by tap is replayed on lift, so tools that need a press-and-drag on elements with 1 finger (other than gizmo, paint,
+  knife, weight brush) won't get it; add their ids to `passthroughTool()` in `gestures.js` if found (e.g. vertex snap is click-based
+  and works).
+- Orbit gizmo (top-right axis widget) is hidden by upstream on `isMobile` only; on iPad it's visible and has its own touch drag.
+
+**Notes for later milestones**
+- M5/M6: `BBTouch.config` holds tunables (slop, double-tap time, gizmo scale, pick tolerance) – a settings dialog could expose them.
+- M7 (Pencil): paint mode currently passes all 1-finger/pen input to upstream; palm rejection should hook into
+  `passthroughTool()`/`pointerdown` capture in `gestures.js` (finger in paint mode → orbit, pen → paint).
+- `BBTouch.gestures.focusSelection()` / `frameAll()` are reusable from other UI.
